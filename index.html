@@ -1,0 +1,301 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Cloud Coverage Forecast – Subdivision Maps (Day 1 & Day 2)</title>
+  <style>
+    *{box-sizing:border-box;margin:0;padding:0}
+    body{font-family:Arial,Helvetica,sans-serif;background:#f5f7fb;color:#111}
+    .container{max-width:1000px;margin:20px auto 60px;background:#fff;border:1px solid #e5e8f0;border-radius:12px;padding:22px;box-shadow:0 8px 24px rgba(0,0,0,.06)}
+    h1{font-size:26px;text-align:center;margin-bottom:6px}
+    h2{font-size:14px;text-align:center;color:#444;margin-bottom:16px}
+    h3{font-size:18px;margin:18px 0 10px}
+
+    table{width:100%;border-collapse:collapse;font-size:13px}
+    th,td{border:1.4px solid #222;padding:6px;text-align:center;vertical-align:middle}
+    thead th{background:#cfe5ff}
+    tbody tr:nth-child(even){background:#fafcff}
+    .note-row{background:#fff9e6;color:#5a4100;font-weight:600;text-align:center}
+
+    select{width:100%;padding:4px;font-size:12px;border:1px solid #b9c7e6;border-radius:6px;background:#fff}
+    td select:hover{outline:2px solid #99c2ff;cursor:pointer}
+
+    .swatch-clear{background:#9ED1E6!important;color:#063647;font-weight:600}
+    .swatch-low{background:#B9DB6E!important;color:#2C4400;font-weight:600}
+    .swatch-medium{background:#FFE93A!important;color:#4A3D00;font-weight:700}
+    .swatch-high{background:#E28322!important;color:#3A1E00;font-weight:700}
+    .swatch-overcast{background:#FF3A3A!important;color:#4A0000;font-weight:700}
+
+    .map-grid{display:grid;grid-template-columns:1fr;gap:16px;margin-top:10px}
+    @media(min-width:900px){.map-grid{grid-template-columns:1fr 1fr}}
+    .map-card{border:1px solid #dfe6ef;border-radius:10px;padding:12px}
+    .map-title{font-weight:700;margin-bottom:6px;text-align:center}
+    .map-wrap{position:relative}
+    svg{width:100%;height:520px;display:block;border:1px solid #d9e1ec;border-radius:8px}
+    .map-legend{position:absolute;top:10px;right:10px;background:#fff;border:1px solid #cfd6e0;border-radius:8px;padding:8px 10px;font-size:12px;box-shadow:0 2px 6px rgba(0,0,0,.06)}
+    .legend-swatch{width:18px;height:18px;border:1.4px solid #222;display:inline-block;border-radius:3px;margin-right:6px}
+    .legend-row{display:flex;align-items:center;gap:6px;margin-bottom:6px}
+    .sub:hover{filter:drop-shadow(0 0 4px rgba(0,0,0,.28));cursor:pointer}
+    .forecast-icon{font-size:16px;text-anchor:middle;dominant-baseline:middle;pointer-events:none}
+
+    .warn{background:#fff3cd;border:1px solid #ffe69c;color:#664d03;padding:8px 10px;border-radius:8px;margin:10px 0;display:none}
+    .error{background:#fde2e1;border:1px solid #e6a19d;color:#7a1410}
+    .uploader{display:none;gap:8px;align-items:center;margin:8px 0}
+  </style>
+  <script src="/asserts/indian_met_zones.geojson"></script>
+</head>
+<body>
+  <div class="container">
+    <h1>Cloud Coverage Forecast Bulletin</h1>
+    <h2 id="forecastDate"></h2>
+
+    <div id="msg" class="warn"></div>
+    <div id="uploader" class="uploader">
+      <label for="geojsonFile">Load your GeoJSON:</label>
+      <input type="file" id="geojsonFile" accept=".geojson,.json" />
+    </div>
+
+    <!-- Classification table -->
+    <h3>Cloud Cover Classification</h3>
+    <table>
+      <thead>
+        <tr>
+          <th>S. No.</th>
+          <th>Sky Covered by Clouds</th>
+          <th>Cloud Cover</th>
+          <th>Cloud Type</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr class="swatch-clear"><td>1</td><td>0–10%</td><td>Clear Sky</td><td>No Cloud</td></tr>
+        <tr class="swatch-low"><td>2</td><td>10–30%</td><td>Low Cloud Cover</td><td>Few Clouds</td></tr>
+        <tr class="swatch-medium"><td>3</td><td>30–50%</td><td>Medium Cloud Cover</td><td>Scattered Clouds / Partly Cloudy</td></tr>
+        <tr class="swatch-high"><td>4</td><td>50–75%</td><td>High Cloud Cover</td><td>Broken Clouds / Mostly Cloudy</td></tr>
+        <tr class="swatch-overcast"><td>5</td><td>75–100%</td><td>Overcast Cloud Cover</td><td>Cloudy / Overcast</td></tr>
+      </tbody>
+      <tfoot><tr><td colspan="4" class="note-row">Note: This terminology is for local use only.</td></tr></tfoot>
+    </table>
+
+    <!-- ONE merged table -->
+    <h3>Forecast</h3>
+    <table>
+      <thead>
+        <tr>
+          <th style="width:60px;">S. No.</th>
+          <th>State</th>
+          <th>Sub S. No.</th>
+          <th>Sub Division</th>
+          <th>Day 1</th>
+          <th>Day 2</th>
+          <th>No. Solar Site</th>
+        </tr>
+      </thead>
+      <tbody id="mergedBody"></tbody>
+    </table>
+
+    <!-- Maps by SUBDIVISION -->
+    <div class="map-grid">
+      <div class="map-card">
+        <div class="map-title">Day 1 Forecast Map</div>
+        <div class="map-wrap">
+          <svg id="mapDay1"></svg>
+          <div class="map-legend">
+            <div class="legend-row"><span class="legend-swatch swatch-clear"></span> Clear Sky</div>
+            <div class="legend-row"><span class="legend-swatch swatch-low"></span> Low Cloud Cover</div>
+            <div class="legend-row"><span class="legend-swatch swatch-medium"></span> Medium Cloud Cover</div>
+            <div class="legend-row"><span class="legend-swatch swatch-high"></span> High Cloud Cover</div>
+            <div class="legend-row"><span class="legend-swatch swatch-overcast"></span> Overcast Cloud Cover</div>
+          </div>
+        </div>
+      </div>
+      <div class="map-card">
+        <div class="map-title">Day 2 Forecast Map</div>
+        <div class="map-wrap">
+          <svg id="mapDay2"></svg>
+          <div class="map-legend">
+            <div class="legend-row"><span class="legend-swatch swatch-clear"></span> Clear Sky</div>
+            <div class="legend-row"><span class="legend-swatch swatch-low"></span> Low Cloud Cover</div>
+            <div class="legend-row"><span class="legend-swatch swatch-medium"></span> Medium Cloud Cover</div>
+            <div class="legend-row"><span class="legend-swatch swatch-high"></span> High Cloud Cover</div>
+            <div class="legend-row"><span class="legend-swatch swatch-overcast"></span> Overcast Cloud Cover</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+<script>
+// === Colors/Options ===
+const COLORS = { 'Clear Sky':'#9ED1E6','Low Cloud Cover':'#B9DB6E','Medium Cloud Cover':'#FFE93A','High Cloud Cover':'#E28322','Overcast Cloud Cover':'#FF3A3A' };
+const ICONS  = { 'Clear Sky':'☀️','Low Cloud Cover':'🌤️','Medium Cloud Cover':'⛅','High Cloud Cover':'☁️','Overcast Cloud Cover':'🌫️' };
+const OPTIONS = Object.keys(COLORS);
+
+// === Subdivision rows (Bihar excluded; your list) ===
+const ROWS = [
+  { subNo:1,  state:'Punjab',            name:'Punjab' },
+  { subNo:2,  state:'Rajasthan',         name:'W-Raj' },
+  { subNo:3,  state:'Rajasthan',         name:'E-Raj' },
+  { subNo:4,  state:'Gujarat',           name:'W-Gujarat (Saurashtra & Kachh)' },
+  { subNo:5,  state:'Gujarat',           name:'E-Gujarat Region' },
+  { subNo:6,  state:'Uttar Pradesh',     name:'W-UP' },
+  { subNo:7,  state:'Uttar Pradesh',     name:'E-UP' },
+  { subNo:9,  state:'Madhya Pradesh',    name:'W-MP' },
+  { subNo:10, state:'Madhya Pradesh',    name:'E-MP' },
+  { subNo:11, state:'Chhattisgarh',      name:'Chhattisgarh' },
+  { subNo:12, state:'Maharashtra',       name:'Madhya -MH' },
+  { subNo:13, state:'Maharashtra',       name:'Marathwada' },
+  { subNo:14, state:'Maharashtra',       name:'Vidarbha' },
+  { subNo:15, state:'Telangana',         name:'Telangana' },
+  { subNo:16, state:'Andhra Pradesh',    name:'Andhra Pradesh' },
+  { subNo:17, state:'Andhra Pradesh',    name:'SW-AP (Rayalaseema)' },
+  { subNo:18, state:'Karnataka',         name:'North-Karnataka' },
+  { subNo:19, state:'Karnataka',         name:'South- Karnataka' },
+  { subNo:20, state:'Tamil Nadu',        name:'Tamil Nadu' }
+];
+
+// === Map name mapping (table -> GeoJSON) ===
+const NAME_MAP = new Map([
+  ['W-Raj','West Rajasthan'],
+  ['E-Raj','East Rajasthan'],
+  ['W-Gujarat (Saurashtra & Kachh)','Saurashtra & Kachh'],
+  ['E-Gujarat Region','Gujarat region'],
+  ['W-UP','West Uttar Pradesh'],
+  ['E-UP','East Uttar Pradesh'],
+  ['W-MP','West Madhya Pradesh'],
+  ['E-MP','East Madhya Pradesh'],
+  ['Madhya -MH','Madhya Maharashtra'],
+  ['North-Karnataka','N.I. Karnataka'],
+  ['South- Karnataka','S.I. Karnataka'],
+  ['SW-AP (Rayalaseema)','Rayalaseema'],
+  ['Andhra Pradesh','Coastal Andhra Pradesh'],
+  ['Tamil Nadu','Tamil Nadu & Puducherry'],
+  ['Punjab','Punjab'], ['Chhattisgarh','Chhattisgarh'],
+  ['Marathwada','Marathwada'], ['Vidarbha','Vidarbha'],
+  ['Telangana','Telangana']
+]);
+
+function norm(s){return (s||'').toLowerCase().replace(/[^a-z0-9]+/g,'')}
+
+// Date (IST)
+(function(){const now=new Date();const utc=now.getTime()+now.getTimezoneOffset()*60000;const ist=new Date(utc+5.5*3600*1000);document.getElementById('forecastDate').textContent=ist.toLocaleDateString('en-IN',{day:'2-digit',month:'long',year:'numeric'});})();
+
+// Build merged table
+function makeSelect(onChange){const sel=document.createElement('select');OPTIONS.forEach(o=>{const op=document.createElement('option');op.value=op.textContent=o;sel.appendChild(op)});sel.addEventListener('change',onChange);return sel}
+function buildTable(){
+  const tbody=document.getElementById('mergedBody');tbody.innerHTML='';
+  const counts={};ROWS.forEach(r=>counts[r.state]=(counts[r.state]||0)+1);
+  let serial=1;const seen=new Set();
+  ROWS.forEach(r=>{
+    const tr=document.createElement('tr');
+    if(!seen.has(r.state)){
+      const tdSno=document.createElement('td');tdSno.rowSpan=counts[r.state];tdSno.textContent=serial++;
+      const tdState=document.createElement('td');tdState.rowSpan=counts[r.state];tdState.textContent=r.state;tdState.style.textAlign='left';tdState.style.fontWeight='600';
+      tr.appendChild(tdSno);tr.appendChild(tdState);seen.add(r.state);
+    }
+    tr.dataset.subkey = norm(NAME_MAP.get(r.name)||r.name);
+    const tdSubNo=document.createElement('td');tdSubNo.textContent=r.subNo;tr.appendChild(tdSubNo);
+    const tdName=document.createElement('td');tdName.textContent=r.name;tdName.style.textAlign='left';tr.appendChild(tdName);
+    const tdD1=document.createElement('td');const tdD2=document.createElement('td');
+    tdD1.appendChild(makeSelect(updateMaps)); tdD2.appendChild(makeSelect(updateMaps));
+    tr.appendChild(tdD1); tr.appendChild(tdD2);
+    const tdSites=document.createElement('td');tdSites.contentEditable='true';tr.appendChild(tdSites);
+    tbody.appendChild(tr);
+  });
+}
+
+// ===== Robust GeoJSON loader =====
+async function loadGeo(){
+  const msg = document.getElementById('msg');
+  const choices = ['indian_met_zones.geojson','indian_met_zones (1).geojson'];
+  for (const path of choices){
+    try{ const data = await fetch(path); if(data.ok){ msg.style.display='none'; return data.json(); } }catch(e){}
+  }
+  // If fetch from file:// is blocked, let user upload
+  msg.textContent = 'Could not auto-load GeoJSON. Place indian_met_zones.geojson next to this HTML or use the file picker below.';
+  msg.classList.add('error'); msg.style.display='block';
+  document.getElementById('uploader').style.display='flex';
+  return new Promise(resolve=>{
+    const input = document.getElementById('geojsonFile');
+    input.onchange = ev => {
+      const file = ev.target.files[0]; if(!file) return;
+      const reader = new FileReader(); reader.onload = () => { try{ resolve(JSON.parse(reader.result)); }catch(e){ alert('Invalid GeoJSON file.'); } };
+      reader.readAsText(file);
+    };
+  });
+}
+
+let centroids = new Map();
+function featureKey(f){
+  const p=f.properties||{}; const name=p.SUBDIV||p.SubDiv||p.Subdivision||p.SUBDIVISION||p.NAME||p.name||p.st_nm||''; 
+  return norm(name);
+}
+
+async function drawBothMaps(){
+  const data = await loadGeo();
+  if(!data||!data.features){ alert('GeoJSON has no features.'); return; }
+  const svg1=d3.select('#mapDay1'); const svg2=d3.select('#mapDay2');
+  svg1.selectAll('*').remove(); svg2.selectAll('*').remove();
+  const box1 = svg1.node().getBoundingClientRect();
+  const size = [Math.max(720, box1.width||720), 520];
+  const proj = d3.geoMercator().fitSize(size, data);
+  const path = d3.geoPath().projection(proj);
+  centroids = new Map();
+  const feats = data.features.map(f=>({f, key:featureKey(f)}));
+  for (const svg of [svg1, svg2]){
+    svg.selectAll('path.sub')
+      .data(feats)
+      .enter().append('path')
+      .attr('class','sub')
+      .attr('id', d=>d.key)
+      .attr('d', d=>path(d.f))
+      .attr('fill','#ccc')
+      .attr('stroke','#333').attr('stroke-width',1)
+      .each(d=>{ centroids.set(d.key, path.centroid(d.f)); });
+  }
+  updateMaps();
+}
+
+function updateMaps(){
+  document.querySelectorAll('#mergedBody tr').forEach(tr=>{
+    const key = tr.dataset.subkey; if(!key) return;
+    const v1 = tr.children[4]?.querySelector('select')?.value;
+    const v2 = tr.children[5]?.querySelector('select')?.value;
+    const n1=d3.select(`#mapDay1 [id='${key}']`);
+    const n2=d3.select(`#mapDay2 [id='${key}']`);
+    if(!n1.empty()) n1.attr('fill', COLORS[v1]||'#ccc');
+    if(!n2.empty()) n2.attr('fill', COLORS[v2]||'#ccc');
+  });
+  d3.selectAll('.forecast-icon').remove();
+  document.querySelectorAll('#mergedBody tr').forEach(tr=>{
+    const key=tr.dataset.subkey; const c=centroids.get(key); if(!c) return;
+    const v1=tr.children[4]?.querySelector('select')?.value; const v2=tr.children[5]?.querySelector('select')?.value;
+    if(v1) d3.select('#mapDay1').append('text').attr('class','forecast-icon').attr('x',c[0]).attr('y',c[1]).text(ICONS[v1]);
+    if(v2) d3.select('#mapDay2').append('text').attr('class','forecast-icon').attr('x',c[0]).attr('y',c[1]).text(ICONS[v2]);
+  });
+}
+
+// -----------------------
+// Init + lightweight tests
+// -----------------------
+(function setIST(){const n=new Date();const utc=n.getTime()+n.getTimezoneOffset()*60000;const ist=new Date(utc+5.5*3600*1000);document.getElementById('forecastDate').textContent=ist.toLocaleDateString('en-IN',{day:'2-digit',month:'long',year:'numeric'});})();
+
+function runSelfTests(){
+  const tests=[]; const assert=(name,cond)=>tests.push({name, pass:!!cond});
+  assert('norm removes punctuation', norm('Saurashtra & Kachh')==='saurashtrakachh');
+  assert('NAME_MAP produces keys for every row', ROWS.every(r => norm(NAME_MAP.get(r.name)||r.name).length>0));
+  console.table(tests);
+  const failed = tests.filter(t=>!t.pass);
+  if(failed.length){ const m=document.getElementById('msg'); m.style.display='block'; m.textContent='Self-test failed for: '+failed.map(f=>f.name).join(', ')+'. Check NAME_MAP labels vs your GeoJSON property values.'; m.classList.add('error'); }
+}
+
+buildTable();
+runSelfTests();
+
+// Draw both maps (tries two filenames, then falls back to file picker if blocked)
+(async function(){
+  await drawBothMaps();
+})();
+</script>
+</body>
+</html>
