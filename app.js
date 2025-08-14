@@ -75,7 +75,7 @@ async function drawMap(svgId) {
   svg.selectAll("*").remove();
 
   // Try both filenames in your repo root
-  const candidates = ["indian_met_zones.geojson", "indian_met_zones (1).geojson"];
+  const candidates = ["indian_met_zones.geojson"];
   let geojson = null;
   for (const url of candidates) {
     try {
