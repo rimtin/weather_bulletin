@@ -49,7 +49,7 @@ function drawMap(svgId) {
 
       // Projection fit to file
       const box = svg.node().getBoundingClientRect();
-      const size = [Math.max(720, box.width || 720), 520];
+      const size = [Math.max(520, box.width || 520), 220];
       const projection = d3.geoMercator().fitSize(size, fc);
       const path = d3.geoPath().projection(projection);
 
