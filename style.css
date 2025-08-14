@@ -48,3 +48,6 @@ svg{width:100%;height:520px;display:block;border:1px solid #ccc;margin:auto}
 /* Hover/Icons */
 .subdiv:hover{filter:drop-shadow(0 0 3px rgba(0,0,0,.25));cursor:pointer}
 .forecast-icon{font-size:16px;text-align:center;display:block;pointer-events:none}
+
+/* Warning banner */
+#warn-banner{margin:10px 0;padding:8px 10px;border:1px solid #e6a23c;background:#fff7e6;color:#8a5a00;border-radius:6px}
