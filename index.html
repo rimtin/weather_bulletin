@@ -2,91 +2,67 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Cloud Coverage Forecast</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Cloud Coverage Forecast – Subdivision Control</title>
 
   <!-- Styles -->
   <link rel="stylesheet" href="style.css" />
-  <!-- (Optional) remove this if you don't have it in the repo -->
-  <!-- <link rel="stylesheet" href="print-style.css" media="print" /> -->
 
-  <!-- Libraries -->
+  <!-- Library -->
   <script src="https://d3js.org/d3.v7.min.js"></script>
-  <script src="https://unpkg.com/topojson-client@3"></script>
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
 
-  <!-- App scripts (defer to ensure DOM is ready) -->
+  <!-- App -->
   <script defer src="data.js"></script>
   <script defer src="app.js"></script>
 </head>
 <body>
   <div class="container">
-    <div id="pdf-area">
+    <h1 class="center-title">Cloud Coverage Forecast Bulletin</h1>
+    <h2 id="forecast-date" class="center-date"></h2>
 
-      <!-- Page 1: Tables -->
-      <div class="page page-1">
-        <h1 class="center-title">Cloud Coverage Forecast Bulletin</h1>
-        <h2 id="forecast-date" class="center-date"></h2>
+    <!-- Cloud Cover Classification -->
+    <h3>Cloud Cover Classification</h3>
+    <table class="cloud-info-table">
+      <thead>
+        <tr>
+          <th>S. No.</th>
+          <th>Sky Covered by Clouds</th>
+          <th>Cloud Cover</th>
+          <th>Cloud Type</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr class="swatch-clear"><td>1</td><td>0–10%</td><td>Clear Sky</td><td>No Cloud</td></tr>
+        <tr class="swatch-low"><td>2</td><td>10–30%</td><td>Low Cloud Cover</td><td>Few Clouds</td></tr>
+        <tr class="swatch-medium"><td>3</td><td>30–50%</td><td>Medium Cloud Cover</td><td>Scattered Clouds / Partly Cloudy</td></tr>
+        <tr class="swatch-high"><td>4</td><td>50–75%</td><td>High Cloud Cover</td><td>Broken Clouds / Mostly Cloudy</td></tr>
+        <tr class="swatch-overcast"><td>5</td><td>75–100%</td><td>Overcast Cloud Cover</td><td>Cloudy / Overcast</td></tr>
+      </tbody>
+      <tfoot>
+        <tr><td colspan="4" class="note-row">Note: This terminology is for local use only.</td></tr>
+      </tfoot>
+    </table>
 
-        <!-- Cloud Cover Classification -->
-        <div class="cloud-cover-reference">
-          <h3>Cloud Cover Classification</h3>
-          <table class="cloud-info-table">
-            <thead>
-              <tr>
-                <th>S. No.</th>
-                <th>Sky Covered by Clouds</th>
-                <th>Cloud Cover</th>
-                <th>Cloud Type</th>
-              </tr>
-            </thead>
-            <tbody>
-              <tr class="swatch-clear"><td>1</td><td>0–10%</td><td>Clear Sky</td><td>No Cloud</td></tr>
-              <tr class="swatch-low"><td>2</td><td>10–30%</td><td>Low Cloud Cover</td><td>Few Clouds</td></tr>
-              <tr class="swatch-medium"><td>3</td><td>30–50%</td><td>Medium Cloud Cover</td><td>Scattered Clouds / Partly Cloudy</td></tr>
-              <tr class="swatch-high"><td>4</td><td>50–75%</td><td>High Cloud Cover</td><td>Broken Clouds / Mostly Cloudy</td></tr>
-              <tr class="swatch-overcast"><td>5</td><td>75–100%</td><td>Overcast Cloud Cover</td><td>Cloudy / Overcast</td></tr>
-            </tbody>
-            <tfoot>
-              <tr>
-                <td colspan="4" class="note-row">Note: This terminology is for local use only.</td>
-              </tr>
-            </tfoot>
-          </table>
-        </div>
+    <!-- Per‑Subdivision Controls -->
+    <h3>Sub‑Division Forecast (Controls)</h3>
+    <table class="forecast-table subdivision-table">
+      <thead>
+        <tr>
+          <th>S. No.</th>
+          <th>State</th>
+          <th>Sub S. No.</th>
+          <th>Sub Division</th>
+          <th>Day 1</th>
+          <th>Day 2</th>
+          <th>No. Solar Site</th>
+        </tr>
+      </thead>
+      <tbody id="subdivision-table-body"></tbody>
+    </table>
 
-        <!-- Forecast Dropdown Table -->
-        <h3 class="table-title" style="text-align:left;">Forecast</h3>
-        <table class="forecast-table">
-          <thead>
-            <tr>
-              <th>S.No.</th>
-              <th>State</th>
-              <th>Day 1</th>
-              <th>Day 2</th>
-            </tr>
-          </thead>
-          <tbody id="forecast-table-body"></tbody>
-        </table>
-
-        <!-- Subdivision Table (chart-only) -->
-        <h3 class="table-title" style="text-align:left;">Sub Divisions</h3>
-        <table class="forecast-table subdivision-table">
-          <thead>
-            <tr>
-              <th>S. No.</th>
-              <th>State</th>
-              <th>Sub S. No.</th>
-              <th>Sub Division</th>
-              <th>No. Solar Site</th>
-            </tr>
-          </thead>
-          <tbody id="subdivision-table-body"></tbody>
-        </table>
-      </div>
-
-      <!-- Page 2: Forecast Maps -->
-      <div class="page page-2">
+    <!-- Maps -->
+    <div class="map-grid">
+      <div class="map-card">
         <h3 class="map-label">Day 1 Forecast Map</h3>
         <div class="map-wrapper">
           <svg id="indiaMapDay1"></svg>
@@ -101,7 +77,9 @@
             </ul>
           </div>
         </div>
+      </div>
 
+      <div class="map-card">
         <h3 class="map-label">Day 2 Forecast Map</h3>
         <div class="map-wrapper">
           <svg id="indiaMapDay2"></svg>
@@ -117,20 +95,11 @@
           </div>
         </div>
       </div>
-
-      <!-- Page 3: Notes -->
-      <div class="page page-3">
-        <h3 style="text-align:left;">Weather System</h3>
-        <div id="bulletinInputEnd" class="bulletin-text editable-text" contenteditable="true">
-          Add your notes here...
-        </div>
-      </div>
-
     </div>
-  </div>
 
-  <div class="download-page">
-    <button id="downloadBtn">Download PDF</button>
+    <!-- Notes -->
+    <h3 style="text-align:left; margin-top:20px;">Weather System</h3>
+    <div id="bulletinInputEnd" class="bulletin-text" contenteditable="true">Add your notes here...</div>
   </div>
 </body>
 </html>
