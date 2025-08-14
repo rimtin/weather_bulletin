@@ -1,4 +1,4 @@
-// === States shown in the main forecast (Bihar removed) ===
+// States list is used only for grouping the subdivision rows (Bihar removed)
 const states = [
   "Punjab", "Rajasthan", "Gujarat", "Uttar Pradesh",
   "Madhya Pradesh", "Chhattisgarh", "Maharashtra",
@@ -13,7 +13,6 @@ const forecastColors = {
   "High Cloud Cover": "#E69536",    // 50–75%
   "Overcast Cloud Cover": "#FF4D4D" // 75–100%
 };
-
 const forecastOptions = Object.keys(forecastColors);
 
 const forecastIcons = {
@@ -24,7 +23,7 @@ const forecastIcons = {
   "Overcast Cloud Cover": "🌫️"
 };
 
-// === Subdivision master list (Bihar excluded) ===
+// Subdivision master (Bihar excluded)
 const subdivisions = [
   { subNo: 1,  state: "Punjab",            name: "Punjab" },
   { subNo: 2,  state: "Rajasthan",         name: "W-Raj" },
@@ -33,7 +32,6 @@ const subdivisions = [
   { subNo: 5,  state: "Gujarat",           name: "E-Gujarat Region" },
   { subNo: 6,  state: "Uttar Pradesh",     name: "W-UP" },
   { subNo: 7,  state: "Uttar Pradesh",     name: "E-UP" },
-  // 8 = Bihar (excluded)
   { subNo: 9,  state: "Madhya Pradesh",    name: "W-MP" },
   { subNo: 10, state: "Madhya Pradesh",    name: "E-MP" },
   { subNo: 11, state: "Chhattisgarh",      name: "Chhattisgarh" },
@@ -48,11 +46,11 @@ const subdivisions = [
   { subNo: 20, state: "Tamil Nadu",        name: "Tamil Nadu" }
 ];
 
+// Date in IST
 function updateISTDate() {
-  const istDate = new Date(Date.now() + (330 * 60 * 1000)); // IST = UTC+5:30
-  const formattedDate = istDate.toLocaleDateString("en-IN", {
-    day: "2-digit", month: "long", year: "numeric"
+  const formatted = new Date().toLocaleDateString("en-IN", {
+    day: "2-digit", month: "long", year: "numeric", timeZone: "Asia/Kolkata"
   });
   const el = document.getElementById("forecast-date");
-  if (el) el.textContent = formattedDate;
+  if (el) el.textContent = formatted;
 }
