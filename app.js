@@ -1,194 +1,306 @@
-// ---- Per‑Subdivision control + maps, using local indian_met_zones.geojson ----
+// === Cloud Bulletin – App logic ===
 
-// Normalizer for safe IDs / CSS matching
-const norm = s => (s || "").toString().toLowerCase().replace(/[^a-z0-9]+/g, "");
+// Centroids for shapes (now subdivisions); used for placing icons, etc.
+window.stateCentroids = {};
+// For the state forecast table (from data.js -> states)
+window.actualStateList = [];
 
-// Safely pick the first existing property name from a list
-const pickProp = (obj, keys) => {
-  for (const k of keys) if (obj && obj[k] != null) return obj[k];
-  return undefined;
-};
-
-// Store subdivision centroids for icon placement
-window.subdivCentroids = {};
-
-// Build the per‑subdivision table
-function buildSubdivisionControlTable() {
-  const tbody = document.getElementById("subdivision-table-body");
-  if (!tbody) return;
-
-  tbody.innerHTML = "";
-  let serial = 1;
-
-  // Keep grouped by states list (visual clarity)
-  states.forEach(state => {
-    const rows = (window.subdivisions || []).filter(s => s.state === state);
-    rows.forEach(row => {
-      const subKey = norm(row.name);
-      const tr = document.createElement("tr");
-      tr.setAttribute("data-subkey", subKey);
-      tr.setAttribute("data-state", state);
-      tr.innerHTML = `
-        <td>${serial++}</td>
-        <td>${state}</td>
-        <td>${row.subNo}</td>
-        <td>${row.name}</td>
-        <td>
-          <select class="sel-day1">
-            ${forecastOptions.map(opt => `<option>${opt}</option>`).join("")}
-          </select>
-        </td>
-        <td>
-          <select class="sel-day2">
-            ${forecastOptions.map(opt => `<option>${opt}</option>`).join("")}
-          </select>
-        </td>
-        <td contenteditable="true"></td>
-      `;
-      tbody.appendChild(tr);
-    });
-  });
-
-  // Changes recolor the maps + icons
-  tbody.querySelectorAll("select").forEach(sel => {
-    sel.addEventListener("change", () => {
-      updateMapColorsFromTable();
-      updateMapIconsFromTable();
-    });
-  });
-
-  // Hover sync (bold polygon)
-  tbody.querySelectorAll("tr").forEach(tr => {
-    const subKey = tr.getAttribute("data-subkey");
-    tr.addEventListener("mouseenter", () => {
-      d3.selectAll(`[data-subkey='${CSS.escape(subKey)}']`).attr("stroke-width", 2.5);
-    });
-    tr.addEventListener("mouseleave", () => {
-      d3.selectAll(`[data-subkey='${CSS.escape(subKey)}']`).attr("stroke-width", 1);
-    });
-  });
+// --- Helpers ---
+/** Make a safe DOM id from any label */
+function toDomId(s) {
+  return String(s || "")
+    .toLowerCase()
+    .replace(/&/g, "and")
+    .replace(/[^a-z0-9]+/g, "_")
+    .replace(/^_+|_+$/g, "");
 }
 
-// Draw IMD sub‑division GeoJSON into a given SVG
-async function drawMap(svgId) {
+/** Try to detect the subdivision name property in your GeoJSON */
+function detectSubdivProp(feature) {
+  const keys = Object.keys(feature.properties || {});
+  const candidates = [
+    "SUBDIV", "SubDiv", "subdiv",
+    "SUB_DIV", "SUBDIVISION", "Subdivision", "subdivision",
+    "NAME", "Name", "name", "label", "LABEL"
+  ];
+  return candidates.find(k => keys.includes(k)) || keys[0];
+}
+
+/** Try to detect the state name property in your GeoJSON (used only for hatch/filters) */
+function detectStateProp(feature) {
+  const keys = Object.keys(feature.properties || {});
+  const candidates = [
+    "STATE", "State", "state",
+    "ST_NM", "st_nm", "STNAME", "ST_NAME"
+  ];
+  return candidates.find(k => keys.includes(k));
+}
+
+/**
+ * Draw map (Day 1 or Day 2) from local indian_met_zones.geojson
+ * svgId: "#indiaMapDay1" or "#indiaMapDay2"
+ */
+function drawMap(svgId) {
   const svg = d3.select(svgId);
   svg.selectAll("*").remove();
 
-  // Try both filenames in your repo root
-  const candidates = ["indian_met_zones.geojson"];
-  let geojson = null;
-  for (const url of candidates) {
-    try {
-      const res = await fetch(url, { cache: "no-store" });
-      if (res.ok) { geojson = await res.json(); break; }
-    } catch (_) {}
-  }
+  // Hatch pattern (for things you want to exclude)
+  const defs = svg.append("defs");
+  defs.append("pattern")
+    .attr("id", "diagonalHatch")
+    .attr("patternUnits", "userSpaceOnUse")
+    .attr("width", 6)
+    .attr("height", 6)
+    .append("path")
+    .attr("d", "M0,0 l6,6")
+    .attr("stroke", "#999")
+    .attr("stroke-width", 1);
 
-  if (!geojson || !geojson.features) {
-    console.error("Could not load indian_met_zones.geojson");
-    alert("Place indian_met_zones.geojson in the same folder as index.html.");
-    return;
-  }
+  const projection = d3.geoMercator()
+    .scale(850)
+    .center([89.8, 21.5])
+    .translate([430, 290]);
 
-  // Projection (auto‑fit to your file’s bounds)
-  const size = [720, 520];
-  const projection = d3.geoMercator().fitSize(size, geojson);
   const path = d3.geoPath().projection(projection);
 
-  // Property keys commonly used in IMD subdivision files
-  const SUBDIV_KEYS = ["SUBDIV", "SubDiv", "Subdivision", "SUBDIVISION", "NAME", "name"];
-  const STATE_KEYS  = ["STATE", "STATE_UT", "State", "STATEUT", "STATE_NAME", "st_nm"];
+  // IMPORTANT: local file so it works on GitHub Pages
+  d3.json("indian_met_zones.geojson")
+    .then(fc => {
+      if (!fc || !fc.features || !fc.features.length) {
+        throw new Error("GeoJSON missing or empty");
+      }
 
-  // Convert features & compute centroids
-  const feats = geojson.features.map(f => {
-    const p = f.properties || {};
-    const subdiv = pickProp(p, SUBDIV_KEYS) || "";
-    const state  = pickProp(p, STATE_KEYS)  || "";
-    const subKey = norm(subdiv);
-    return { f, subdiv, state, subKey };
-  });
+      const features = fc.features;
+      const subdivProp = detectSubdivProp(features[0]);
+      const stateProp  = detectStateProp(features[0]); // optional
 
-  svg.selectAll("path.subdiv")
-    .data(feats)
-    .enter()
-    .append("path")
-    .attr("class", "subdiv")
-    .attr("data-map", svgId.replace("#", "")) // indiaMapDay1 | indiaMapDay2
-    .attr("data-subkey", d => d.subKey)      // normalized key
-    .attr("data-state", d => d.state)        // raw state name
-    .attr("data-subdiv", d => d.subdiv)      // raw subdiv name
-    .attr("d", d => path(d.f))
-    .attr("fill", "#ccc")
-    .attr("stroke", "#333")
-    .attr("stroke-width", 1)
-    .each(d => { window.subdivCentroids[d.subKey] = path.centroid(d.f); })
-    .on("mouseover", function(){ d3.select(this).attr("stroke-width", 2.5); })
-    .on("mouseout",  function(){ d3.select(this).attr("stroke-width", 1);  });
+      // Keep your state list for the state-level table
+      const allowedStates = states.slice();
+      actualStateList = allowedStates;
 
-  // After second map is drawn, make sure initial colors/icons are in place
-  if (svgId === "#indiaMapDay2") {
-    updateMapColorsFromTable();
-    updateMapIconsFromTable();
-  }
+      // Draw polygons (subdivisions)
+      svg.selectAll("path.subdivision")
+        .data(features)
+        .enter()
+        .append("path")
+        .attr("class", "state subdivision")
+        .attr("d", path)
+        .attr("id", d => {
+          const label = d.properties[subdivProp];
+          const id = toDomId(label);
+          window.stateCentroids[label] = path.centroid(d);
+          // Keep a quick alias for id lookup by raw label too
+          window.stateCentroids[id] = window.stateCentroids[label];
+          return id;
+        })
+        .attr("data-label", d => d.properties[subdivProp])
+        .attr("data-map", svgId.replace("#", "")) // indiaMapDay1 | indiaMapDay2
+        .attr("fill", d => {
+          // If you want to gray/hatch items outside your state list:
+          if (!stateProp) return "#ccc";
+          const stName = d.properties[stateProp];
+          return allowedStates.includes(stName) ? "#ccc" : "url(#diagonalHatch)";
+        })
+        .attr("stroke", "#333")
+        .attr("stroke-width", 1)
+        .on("mouseover", function () { d3.select(this).attr("stroke-width", 2.5); })
+        .on("mouseout",  function () { d3.select(this).attr("stroke-width", 1); });
+
+      // If this is the second map, we can finish wiring everything
+      if (svgId === "#indiaMapDay2") {
+        // Tables & sync are now created INDEPENDENT of map load,
+        // but calling again is harmless (idempotent).
+        initializeForecastTable();   // state-level forecast (existing)
+        renderSubdivisionTable();    // subdivision list (chart-only)
+        addTableHoverSync();         // bold outline on hover
+        updateMapColors();           // initial colors from selects
+        updateMapIcons();            // initial icons
+      }
+    })
+    .catch(err => {
+      console.error("Map loading error:", err);
+      // NOTE: tables now render even if map fails
+      alert("Could not load the map (network/CORS/URL). The tables still work.");
+    });
 }
 
-// Apply colors from per‑subdivision table to both maps
-function updateMapColorsFromTable() {
-  // Neutral first
-  d3.selectAll("#indiaMapDay1 .subdiv, #indiaMapDay2 .subdiv").attr("fill", "#ccc");
+window.drawMap = drawMap;
 
-  document.querySelectorAll("#subdivision-table-body tr").forEach(tr => {
-    const subKey = tr.getAttribute("data-subkey");
-    const day1 = tr.querySelector(".sel-day1")?.value;
-    const day2 = tr.querySelector(".sel-day2")?.value;
+// === Existing state-level forecast table ===
+function initializeForecastTable() {
+  const tbody = document.getElementById("forecast-table-body");
+  if (!tbody) return;
 
-    const color1 = forecastColors[day1] || "#ccc";
-    const color2 = forecastColors[day2] || "#ccc";
+  // Only build once
+  if (tbody.dataset.built === "1") return;
+  tbody.dataset.built = "1";
 
-    d3.selectAll(`#indiaMapDay1 [data-subkey='${CSS.escape(subKey)}']`).attr("fill", color1);
-    d3.selectAll(`#indiaMapDay2 [data-subkey='${CSS.escape(subKey)}']`).attr("fill", color2);
+  tbody.innerHTML = "";
+  actualStateList.forEach((state, index) => {
+    const row = document.createElement("tr");
+    row.setAttribute("data-state", state);
+    row.innerHTML = `
+      <td>${index + 1}</td>
+      <td>${state}</td>
+      <td>
+        <select>
+          ${forecastOptions.map(opt => `<option>${opt}</option>`).join("")}
+        </select>
+      </td>
+      <td>
+        <select>
+          ${forecastOptions.map(opt => `<option>${opt}</option>`).join("")}
+        </select>
+      </td>
+    `;
+    tbody.appendChild(row);
+  });
+
+  // Attach once
+  tbody.querySelectorAll("select").forEach(sel =>
+    sel.addEventListener("change", updateMapColors)
+  );
+}
+
+// Hover-to-highlight on the map
+function addTableHoverSync() {
+  const tbody = document.getElementById("forecast-table-body");
+  if (!tbody) return;
+
+  // Remove any old listeners safely
+  const fresh = tbody.cloneNode(true);
+  tbody.parentNode.replaceChild(fresh, tbody);
+
+  fresh.querySelectorAll("tr").forEach(tr => {
+    const state = tr.getAttribute("data-state");
+    tr.addEventListener("mouseenter", () => {
+      d3.selectAll(`[data-label][data-map='indiaMapDay1']`).filter(function() {
+        // If your GeoJSON has a STATE property, this could be tighter.
+        return true; // keep simple bold on hover of any subdivision
+      });
+      d3.selectAll(`[id='${toDomId(state)}']`).attr("stroke-width", 2.5);
+    });
+    tr.addEventListener("mouseleave", () => {
+      d3.selectAll(`[id='${toDomId(state)}']`).attr("stroke-width", 1);
+    });
+
+    tr.querySelectorAll("select").forEach(sel =>
+      sel.addEventListener("change", updateMapColors)
+    );
   });
 }
 
-// Place emoji at each subdivision centroid based on selections
-function updateMapIconsFromTable() {
+// Apply selected colors (kept state-level like your table)
+function updateMapColors() {
+  const rows = document.querySelectorAll("#forecast-table-body tr");
+  rows.forEach(row => {
+    const state = row.children[1]?.textContent?.trim();
+    const forecast1 = row.children[2]?.querySelector("select")?.value;
+    const forecast2 = row.children[3]?.querySelector("select")?.value;
+
+    const color1 = forecastColors[forecast1] || "#ccc";
+    const color2 = forecastColors[forecast2] || "#ccc";
+
+    // Fill ALL subdivisions that belong to this state if that property exists.
+    // If your GeoJSON has a STATE prop, this will color by state grouping.
+    const fillByState = (mapId, color) => {
+      const sel = d3.select(mapId);
+      const candidates = sel.selectAll("path.subdivision");
+      candidates.each(function(d) {
+        const stProp = detectStateProp(d);
+      });
+    };
+
+    // Fallback: color by matching id to the state name (useful if your
+    // subdivision label sometimes equals the state label)
+    const region1 = d3.select(`[id='${toDomId(state)}'][data-map='indiaMapDay1']`);
+    const region2 = d3.select(`[id='${toDomId(state)}'][data-map='indiaMapDay2']`);
+
+    if (!region1.empty()) region1.attr("fill", color1);
+    if (!region2.empty()) region2.attr("fill", color2);
+  });
+
+  updateMapIcons();
+}
+
+// Drop simple emoji icons at centroids (still state keyed)
+function updateMapIcons() {
+  const iconSize = 18;
   d3.selectAll(".forecast-icon").remove();
-  const iconSize = 16;
 
-  document.querySelectorAll("#subdivision-table-body tr").forEach(tr => {
-    const subKey = tr.getAttribute("data-subkey");
-    const day1   = tr.querySelector(".sel-day1")?.value;
-    const day2   = tr.querySelector(".sel-day2")?.value;
+  document.querySelectorAll("#forecast-table-body tr").forEach(row => {
+    const state = row.children[1]?.textContent?.trim();
+    const forecast1 = row.children[2]?.querySelector("select")?.value;
+    const forecast2 = row.children[3]?.querySelector("select")?.value;
 
-    const icon1 = forecastIcons[day1];
-    const icon2 = forecastIcons[day2];
-    const c = window.subdivCentroids[subKey];
+    // We kept centroids keyed by raw label and by safe id
+    const coords = window.stateCentroids[state] || window.stateCentroids[toDomId(state)];
+    const icon1 = forecastIcons[forecast1];
+    const icon2 = forecastIcons[forecast2];
 
-    if (c && icon1) {
+    if (coords && icon1) {
       d3.select("#indiaMapDay1")
         .append("text")
         .attr("class", "forecast-icon")
-        .attr("x", c[0]).attr("y", c[1])
-        .attr("text-anchor", "middle").attr("alignment-baseline", "middle")
+        .attr("x", coords[0])
+        .attr("y", coords[1])
+        .attr("text-anchor", "middle")
+        .attr("alignment-baseline", "middle")
         .attr("font-size", iconSize)
         .text(icon1);
     }
-    if (c && icon2) {
+
+    if (coords && icon2) {
       d3.select("#indiaMapDay2")
         .append("text")
         .attr("class", "forecast-icon")
-        .attr("x", c[0]).attr("y", c[1])
-        .attr("text-anchor", "middle").attr("alignment-baseline", "middle")
+        .attr("x", coords[0])
+        .attr("y", coords[1])
+        .attr("text-anchor", "middle")
+        .attr("alignment-baseline", "middle")
         .attr("font-size", iconSize)
         .text(icon2);
     }
   });
 }
 
-// Init
-window.addEventListener("DOMContentLoaded", () => {
+// Subdivision table (read‑only list right now)
+function renderSubdivisionTable() {
+  const tbody = document.getElementById("subdivision-table-body");
+  if (!tbody) return;
+
+  // Only build once
+  if (tbody.dataset.built === "1") return;
+  tbody.dataset.built = "1";
+
+  tbody.innerHTML = "";
+  let serial = 1;
+  states.forEach(state => {
+    const rows = (window.subdivisions || []).filter(s => s.state === state);
+    rows.forEach(row => {
+      const tr = document.createElement("tr");
+      tr.innerHTML = `
+        <td>${serial++}</td>
+        <td>${state}</td>
+        <td>${row.subNo}</td>
+        <td>${row.name}</td>
+        <td contenteditable="true"></td>
+      `;
+      tbody.appendChild(tr);
+    });
+  });
+}
+
+// === Init ===
+// Create tables immediately (so they show even if the map fails),
+// then draw both maps.
+window.onload = () => {
   if (typeof updateISTDate === "function") updateISTDate();
-  buildSubdivisionControlTable();      // table should appear even if map fails
+
+  initializeForecastTable();
+  renderSubdivisionTable();
+  addTableHoverSync();
+
   drawMap("#indiaMapDay1");
   drawMap("#indiaMapDay2");
-});
+};
