@@ -14,19 +14,24 @@ function drawMap(svgId){
   const svg = d3.select(svgId);
   svg.selectAll("*").remove();
 
-  // load your local subdivisions
- // current
-d3.json("https://raw.githubusercontent.com/udit-001/india-maps-data/refs/heads/main/topojson/india.json")
-.then(raw=>{
-    const fc = (raw && raw.type==="FeatureCollection") ? raw : {type:"FeatureCollection", features:(raw?.features||raw||[])};
+  // load your local subdivisions (repo root)
+  const GEOJSON_PATH = "./indian_met_zones.geojson";
+
+  d3.json(GEOJSON_PATH).then(raw=>{
+    // normalize to FeatureCollection
+    const fc = (raw && raw.type==="FeatureCollection")
+      ? raw
+      : { type:"FeatureCollection", features:(raw?.features || raw || []) };
+
     if(!fc.features?.length) throw new Error("Empty GeoJSON");
 
+    // detect property keys
     const sample = fc.features[0].properties || {};
     const SUBDIV_PROP = pickKey(sample, SUBDIV_KEYS) || Object.keys(sample)[0];
     const STATE_PROP  = pickKey(sample, STATE_KEYS);
 
     // fit to svg
-    const width = Math.max(520, svg.node().getBoundingClientRect().width || 520);
+    const width  = Math.max(520, svg.node().getBoundingClientRect().width || 520);
     const height = 520;
     const projection = d3.geoMercator().fitSize([width,height], fc);
     const path = d3.geoPath(projection);
@@ -52,7 +57,7 @@ d3.json("https://raw.githubusercontent.com/udit-001/india-maps-data/refs/heads/m
     const accum = {};
     fc.features.forEach(f=>{
       const st = String(f.properties?.[STATE_PROP] ?? "");
-      const c = path.centroid(f);
+      const c  = path.centroid(f);
       if(!st || !isFinite(c[0]) || !isFinite(c[1])) return;
       (accum[st] ||= {x:0,y:0,n:0});
       accum[st].x += c[0]; accum[st].y += c[1]; accum[st].n += 1;
@@ -65,7 +70,7 @@ d3.json("https://raw.githubusercontent.com/udit-001/india-maps-data/refs/heads/m
     if (svgId==="#indiaMapDay2"){ updateMapColors(); updateMapIcons(); }
   }).catch(err=>{
     console.error("GeoJSON load error:", err);
-    alert("Could not load indian_met_zones.geojson (check filename and path).");
+    alert("Could not load ./indian_met_zones.geojson (check filename and path).");
   });
 }
 window.drawMap = drawMap;
@@ -135,8 +140,9 @@ function updateMapColors(){
   const rows = document.querySelectorAll("#subdivision-forecast-body tr[data-state]");
   rows.forEach(tr=>{
     const st  = tr.getAttribute("data-state");
-    const d1  = tr.children[4]?.querySelector("select")?.value; // Day 1
-    const d2  = tr.children[5]?.querySelector("select")?.value; // Day 2
+    const selects = tr.querySelectorAll("select");
+    const d1  = selects[0]?.value; // Day 1
+    const d2  = selects[1]?.value; // Day 2
     const c1  = forecastColors[d1] || "#eee";
     const c2  = forecastColors[d2] || "#eee";
     d3.selectAll(`#indiaMapDay1 [data-state='${CSS.escape(st)}']`).attr("fill", c1);
@@ -150,8 +156,9 @@ function updateMapIcons(){
 
   document.querySelectorAll("#subdivision-forecast-body tr[data-state]").forEach(tr=>{
     const st  = tr.getAttribute("data-state");
-    const d1  = tr.children[4]?.querySelector("select")?.value;
-    const d2  = tr.children[5]?.querySelector("select")?.value;
+    const selects = tr.querySelectorAll("select");
+    const d1  = selects[0]?.value;
+    const d2  = selects[1]?.value;
     const p   = window.stateCentroids[st];
     const i1  = forecastIcons[d1], i2 = forecastIcons[d2];
 
@@ -171,12 +178,10 @@ function updateMapIcons(){
 window.onload = () => {
   if (typeof updateISTDate === "function") updateISTDate();
 
-  // Build tables first so the page is useful even if the map path is wrong
-  initializeForecastTable?.();  // safe: runs only if the mini table exists
-  renderSubdivisionTable();     // fills the big "Sub-Division Forecast (Controls)" table
+  // Build the single combined table first
+  renderSubdivisionForecastTable();
 
   // Then draw both maps
   drawMap("#indiaMapDay1");
   drawMap("#indiaMapDay2");
 };
-
