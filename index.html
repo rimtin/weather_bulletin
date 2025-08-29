@@ -6,8 +6,11 @@
   <title>Cloud Coverage Forecast – Subdivision Control</title>
 
   <link rel="stylesheet" href="style.css" />
+
+  <!-- D3 -->
   <script src="https://d3js.org/d3.v7.min.js"></script>
 
+  <!-- App data + logic -->
   <script defer src="data.js"></script>
   <script defer src="app.js"></script>
 </head>
@@ -16,7 +19,7 @@
     <h1 class="center-title">Cloud Coverage Forecast Bulletin</h1>
     <h2 id="forecast-date" class="center-date"></h2>
 
-    <!-- Cloud Cover Classification -->
+    <!-- Cloud Cover Classification (Excel colors) -->
     <h3>Cloud Cover Classification</h3>
     <table class="cloud-info-table">
       <thead>
@@ -37,8 +40,8 @@
       <tfoot><tr><td colspan="4" class="note-row">Note: This terminology is for local use only.</td></tr></tfoot>
     </table>
 
-    <!-- Per‑Subdivision Controls -->
-    <h3>Sub‑Division Forecast (Controls)</h3>
+    <!-- Sub-Division Forecast (dropdowns in every row) -->
+    <h3>Sub-Division Forecast (Controls)</h3>
     <table class="forecast-table subdivision-table">
       <thead>
         <tr>
@@ -46,9 +49,9 @@
           <th>State</th>
           <th>Sub S. No.</th>
           <th>Sub Division</th>
+          <th>No. Solar Site</th>
           <th>Day 1</th>
           <th>Day 2</th>
-          <th>No. Solar Site</th>
         </tr>
       </thead>
       <tbody id="subdivision-table-body"></tbody>
@@ -67,7 +70,6 @@
               <li><span class="legend-swatch swatch-medium"></span> Medium Cloud Cover</li>
               <li><span class="legend-swatch swatch-high"></span> High Cloud Cover</li>
               <li><span class="legend-swatch swatch-overcast"></span> Overcast Cloud Cover</li>
-              <li><span class="legend-pattern"></span> No Forecast Available</li>
             </ul>
           </div>
         </div>
@@ -83,7 +85,6 @@
               <li><span class="legend-swatch swatch-medium"></span> Medium Cloud Cover</li>
               <li><span class="legend-swatch swatch-high"></span> High Cloud Cover</li>
               <li><span class="legend-swatch swatch-overcast"></span> Overcast Cloud Cover</li>
-              <li><span class="legend-pattern"></span> No Forecast Available</li>
             </ul>
           </div>
         </div>
@@ -96,3 +97,4 @@
   </div>
 </body>
 </html>
+
