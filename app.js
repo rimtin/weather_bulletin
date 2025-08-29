@@ -1,7 +1,7 @@
 // === Subdivision map from local GeoJSON; table controls color both maps ===
 
 // ---- CONFIG ----
-const GEOJSON_PATH = "indian_met_zones.geojson";
+const GEOJSON_PATH = "./indian_met_zones.geojson";
 
 // Common property names found in IMD-style files
 const SUBDIV_KEYS = ["SUBDIV","SubDiv","Subdivision","SUBDIVISION","NAME","name","label","LABEL"];
