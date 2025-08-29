@@ -1,11 +1,12 @@
-// States list used for grouping (Bihar removed)
+
+// States (for grouping; Bihar excluded)
 const states = [
   "Punjab","Rajasthan","Gujarat","Uttar Pradesh",
   "Madhya Pradesh","Chhattisgarh","Maharashtra",
   "Telangana","Andhra Pradesh","Karnataka","Tamil Nadu"
 ];
 
-// Exact Excel-style palette
+// Excel palette
 const forecastColors = {
   "Clear Sky": "#A7D8EB",
   "Low Cloud Cover": "#C4E17F",
@@ -23,7 +24,7 @@ const forecastIcons = {
   "Overcast Cloud Cover": "🌫️"
 };
 
-// Subdivision list (Bihar excluded)
+// Subdivisions (Bihar excluded)
 const subdivisions = [
   { subNo:1,  state:"Punjab",            name:"Punjab" },
   { subNo:2,  state:"Rajasthan",         name:"W-Raj" },
