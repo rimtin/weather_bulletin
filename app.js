@@ -1,4 +1,16 @@
 // === App logic for forecast (Subdivision map from local GeoJSON at repo root) ===
+<h3>Forecast (by State)</h3>
+<table class="forecast-table">
+  <thead>
+    <tr>
+      <th>S. No.</th>
+      <th>State</th>
+      <th>Day 1</th>
+      <th>Day 2</th>
+    </tr>
+  </thead>
+  <tbody id="forecast-table-body"></tbody>
+</table>
 
 // Average centroid per STATE (for icons)
 window.stateCentroids = {};
