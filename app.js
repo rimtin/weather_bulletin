@@ -45,7 +45,7 @@ function drawMap(svgId) {
     .attr("stroke-width", 1);
 
   // 1) Your GeoJSON is in the repo root:
-  const GEOJSON_PATH = "./indian_met_zones.geojson";
+  const GEOJSON_PATH = "/indian_met_zones.geojson";
 
   d3.json(GEOJSON_PATH)
     .then(raw => {
