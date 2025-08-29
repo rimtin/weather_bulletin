@@ -15,7 +15,9 @@ function drawMap(svgId){
   svg.selectAll("*").remove();
 
   // load your local subdivisions
-  d3.json( "/weather_bulletin/indian_met_zones.geojson").then(raw=>{
+ // current
+d3.json("https://raw.githubusercontent.com/udit-001/india-maps-data/refs/heads/main/topojson/india.json")
+.then(raw=>{
     const fc = (raw && raw.type==="FeatureCollection") ? raw : {type:"FeatureCollection", features:(raw?.features||raw||[])};
     if(!fc.features?.length) throw new Error("Empty GeoJSON");
 
