@@ -15,7 +15,7 @@ function drawMap(svgId){
   svg.selectAll("*").remove();
 
   // load your local subdivisions
-  d3.json("./indian_met_zones.geojson").then(raw=>{
+  d3.json("/indian_met_zones.geojson").then(raw=>{
     const fc = (raw && raw.type==="FeatureCollection") ? raw : {type:"FeatureCollection", features:(raw?.features||raw||[])};
     if(!fc.features?.length) throw new Error("Empty GeoJSON");
 
