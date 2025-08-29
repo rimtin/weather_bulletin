@@ -15,7 +15,7 @@ function drawMap(svgId){
   svg.selectAll("*").remove();
 
   // load your local subdivisions
-  d3.json("/indian_met_zones.geojson").then(raw=>{
+  d3.json( "/weather_bulletin/indian_met_zones.geojson").then(raw=>{
     const fc = (raw && raw.type==="FeatureCollection") ? raw : {type:"FeatureCollection", features:(raw?.features||raw||[])};
     if(!fc.features?.length) throw new Error("Empty GeoJSON");
 
@@ -166,9 +166,15 @@ function updateMapIcons(){
 }
 
 /* ---------- INIT ---------- */
-window.onload = ()=>{
-  if(typeof updateISTDate==="function") updateISTDate();
-  renderSubdivisionForecastTable();  // build the single table
+window.onload = () => {
+  if (typeof updateISTDate === "function") updateISTDate();
+
+  // Build tables first so the page is useful even if the map path is wrong
+  initializeForecastTable?.();  // safe: runs only if the mini table exists
+  renderSubdivisionTable();     // fills the big "Sub-Division Forecast (Controls)" table
+
+  // Then draw both maps
   drawMap("#indiaMapDay1");
   drawMap("#indiaMapDay2");
 };
+
