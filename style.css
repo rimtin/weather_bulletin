@@ -38,12 +38,7 @@ svg{width:100%;height:520px;display:block;border:1px solid #ccc;margin:auto}
 .swatch-high{background:#E28322!important;color:#3A1E00;font-weight:700}
 .swatch-overcast{background:#FF3A3A!important;color:#4A0000;font-weight:700}
 
-/* Subdivision table tweaks */
-.subdivision-table td,.subdivision-table th{text-align:left}
-.subdivision-table td:nth-child(1),.subdivision-table th:nth-child(1),
-.subdivision-table td:nth-child(3),.subdivision-table th:nth-child(3){text-align:center}
-.subdivision-table td:nth-child(5),.subdivision-table th:nth-child(5){width:140px}
-
-/* Hover/Icons */
+/* Map polygons + icons */
 .subdiv:hover{filter:drop-shadow(0 0 3px rgba(0,0,0,.25));cursor:pointer}
 .forecast-icon{font-size:16px;text-align:center;display:block;pointer-events:none}
+
