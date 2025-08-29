@@ -6,11 +6,8 @@
   <title>Cloud Coverage Forecast – Subdivision Control</title>
 
   <link rel="stylesheet" href="style.css" />
-
-  <!-- D3 -->
   <script src="https://d3js.org/d3.v7.min.js"></script>
 
-  <!-- App data + logic -->
   <script defer src="data.js"></script>
   <script defer src="app.js"></script>
 </head>
@@ -19,7 +16,7 @@
     <h1 class="center-title">Cloud Coverage Forecast Bulletin</h1>
     <h2 id="forecast-date" class="center-date"></h2>
 
-    <!-- Cloud Cover Classification (Excel colors) -->
+    <!-- Cloud Cover Classification -->
     <h3>Cloud Cover Classification</h3>
     <table class="cloud-info-table">
       <thead>
@@ -40,21 +37,20 @@
       <tfoot><tr><td colspan="4" class="note-row">Note: This terminology is for local use only.</td></tr></tfoot>
     </table>
 
-    <!-- Sub-Division Forecast (dropdowns in every row) -->
+    <!-- One table (like your screenshot) -->
     <h3>Sub-Division Forecast (Controls)</h3>
     <table class="forecast-table subdivision-table">
       <thead>
         <tr>
           <th>S. No.</th>
           <th>State</th>
-          <th>Sub S. No.</th>
           <th>Sub Division</th>
           <th>No. Solar Site</th>
           <th>Day 1</th>
           <th>Day 2</th>
         </tr>
       </thead>
-      <tbody id="subdivision-table-body"></tbody>
+      <tbody id="subdivision-forecast-body"></tbody>
     </table>
 
     <!-- Maps -->
