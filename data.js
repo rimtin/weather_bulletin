@@ -1,11 +1,11 @@
-// States list used for grouping the subdivision rows (Bihar removed)
+// States list used for grouping (Bihar removed)
 const states = [
   "Punjab","Rajasthan","Gujarat","Uttar Pradesh",
   "Madhya Pradesh","Chhattisgarh","Maharashtra",
   "Telangana","Andhra Pradesh","Karnataka","Tamil Nadu"
 ];
 
-// Excel-style palette
+// Exact Excel-style palette
 const forecastColors = {
   "Clear Sky": "#A7D8EB",
   "Low Cloud Cover": "#C4E17F",
@@ -46,7 +46,7 @@ const subdivisions = [
   { subNo:20, state:"Tamil Nadu",        name:"Tamil Nadu" }
 ];
 
-// Date in IST
+// Date (IST)
 function updateISTDate(){
   const formatted = new Date().toLocaleDateString("en-IN", {
     day:"2-digit", month:"long", year:"numeric", timeZone:"Asia/Kolkata"
