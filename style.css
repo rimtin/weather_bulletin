@@ -30,7 +30,6 @@ svg{width:100%;height:520px;display:block;border:1px solid #ccc;margin:auto}
 .map-legend ul{list-style:none;margin:0;padding:0}
 .map-legend li{display:flex;align-items:center;margin-bottom:6px}
 .legend-swatch{width:18px;height:18px;border:1.4px solid #222;border-radius:3px;margin-right:6px;display:inline-block}
-.legend-pattern{display:inline-block;width:18px;height:18px;margin-right:6px;border:1.4px solid #222;border-radius:3px;background-image:repeating-linear-gradient(45deg,#999 0,#999 1px,transparent 1px,transparent 4px)}
 
 /* Excel-like swatches */
 .swatch-clear{background:#9ED1E6!important;color:#063647;font-weight:600}
@@ -43,11 +42,8 @@ svg{width:100%;height:520px;display:block;border:1px solid #ccc;margin:auto}
 .subdivision-table td,.subdivision-table th{text-align:left}
 .subdivision-table td:nth-child(1),.subdivision-table th:nth-child(1),
 .subdivision-table td:nth-child(3),.subdivision-table th:nth-child(3){text-align:center}
-.subdivision-table td:nth-child(7),.subdivision-table th:nth-child(7){width:140px}
+.subdivision-table td:nth-child(5),.subdivision-table th:nth-child(5){width:140px}
 
 /* Hover/Icons */
 .subdiv:hover{filter:drop-shadow(0 0 3px rgba(0,0,0,.25));cursor:pointer}
 .forecast-icon{font-size:16px;text-align:center;display:block;pointer-events:none}
-
-/* Warning banner */
-#warn-banner{margin:10px 0;padding:8px 10px;border:1px solid #e6a23c;background:#fff7e6;color:#8a5a00;border-radius:6px}
