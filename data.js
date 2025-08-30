@@ -5,7 +5,7 @@ const states = [
   "Telangana","Andhra Pradesh","Karnataka","Tamil Nadu"
 ];
 
-// Excel palette (used only for table dropdowns UI)
+// Excel palette (for table dropdowns UI)
 const forecastColors = {
   "Clear Sky":"#A7D8EB","Low Cloud Cover":"#C4E17F","Medium Cloud Cover":"#FFF952",
   "High Cloud Cover":"#E69536","Overcast Cloud Cover":"#FF4D4D"
