@@ -15,7 +15,7 @@ function drawMap(svgId){
   svg.selectAll("*").remove();
 
   // load your local subdivisions (repo root)
-  const GEOJSON_PATH = "./indian_met_zones.geojson";
+  const GEOJSON_PATH = "assets/indian_met_zones.geojson";
 
   d3.json(GEOJSON_PATH).then(raw=>{
     // normalize to FeatureCollection
