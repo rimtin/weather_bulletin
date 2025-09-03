@@ -1,3 +1,4 @@
+
 // === Forecast color palette ===
 const forecastColors = {
   "Clear Sky": "#A7D8EB",           // 0–10%
