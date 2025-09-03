@@ -40,7 +40,7 @@ const TableToGeoName = {
   "Andhra Pradesh": "Coastal Andhra Pradesh",
   "SW-AP (Rayalaseema)": "Rayalaseema",
 
-  // Karnataka (dataset uses N.I. / S.I.)
+  // Karnataka
   "North-Karnataka": "N.I. Karnataka",
   "South- Karnataka": "S.I. Karnataka"
 };
@@ -68,7 +68,7 @@ function normalizeToFeatures(raw){
   const nameProp = features.length ? detectNameProp(features[0].properties) : "name";
   return {features, nameProp};
 }
-// Sequential loader with fallbacks + console hints
+// loader with fallbacks + console hints
 async function loadGeoJSON(urls){
   let lastErr;
   for(const url of urls){
@@ -221,7 +221,7 @@ async function drawSubdivisionMap(svgId, onReady){
   svg.attr("viewBox", `0 0 ${width} ${height}`)
      .attr("preserveAspectRatio","xMidYMid meet");
 
-  // Legend pattern (not strictly required)
+  // Optional hatch pattern
   const defs=svg.append("defs");
   defs.append("pattern")
     .attr("id","diagonalHatch")
@@ -234,7 +234,7 @@ async function drawSubdivisionMap(svgId, onReady){
     const {features,nameProp}=normalizeToFeatures(raw);
     const fc = { type:"FeatureCollection", features };
 
-    // Auto-fit projection to your data (so shapes appear!)
+    // Auto-fit projection to your data (so shapes appear)
     const projection = d3.geoMercator();
     const path = d3.geoPath().projection(projection);
     projection.fitSize([width, height], fc);
