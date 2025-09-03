@@ -199,23 +199,26 @@ async function drawSubdivisionMap(svgId, onReady){
   const width = 860, height = 580;
   svg.attr("width", width).attr("height", height)
      .attr("viewBox", `0 0 ${width} ${height}`)
-     .attr("preserveAspectRatio","xMidYMid meet");
+     .attr("preserveAspectRatio","xMidYMid meet")
+     // kill any background set via CSS
+     .style("background", "transparent", "important")
+     .style("background-color", "transparent", "important")
+     .style("position","relative")
+     .style("z-index","2");
 
-  // Add a tiny CSS override to prevent any external rule from hiding paths
+  // Kill any overlay/pseudo-element/bkg that might sit above the SVG
   if (!document.getElementById("map-hardening-css")) {
     const styleEl = document.createElement("style");
     styleEl.id = "map-hardening-css";
     styleEl.textContent = `
+      .map-wrapper, .map-wrapper * { box-shadow: none !important; }
+      .map-wrapper { position: relative !important; background: transparent !important; }
+      .map-wrapper::before, .map-wrapper::after { display: none !important; background: transparent !important; }
+      #indiaSubMapDay1, #indiaSubMapDay2 { position: relative !important; z-index: 2 !important; }
       #indiaSubMapDay1 path.state, #indiaSubMapDay2 path.state {
-        fill: #ccc !important;
-        stroke: #333 !important;
-        stroke-width: 1px !important;
-        vector-effect: non-scaling-stroke !important;
-        opacity: 1 !important;
-        display: inline !important;
-        visibility: visible !important;
+        fill: #ccc !important; stroke: #333 !important; stroke-width: 1px !important;
+        vector-effect: non-scaling-stroke !important; opacity: 1 !important; display: inline !important;
       }
-      .map-wrapper svg { background: transparent !important; }
     `;
     document.head.appendChild(styleEl);
   }
@@ -230,17 +233,6 @@ async function drawSubdivisionMap(svgId, onReady){
     const path = d3.geoPath().projection(projection);
     projection.fitSize([width, height], fc);
 
-    // Debug: show computed bounds (and a red rectangle around them)
-    const bounds = path.bounds(fc);
-    console.log("[Bounds]", bounds);
-    svg.append("rect")
-      .attr("x", bounds[0][0])
-      .attr("y", bounds[0][1])
-      .attr("width", Math.max(1, bounds[1][0] - bounds[0][0]))
-      .attr("height", Math.max(1, bounds[1][1] - bounds[0][1]))
-      .style("fill", "none").style("stroke", "red").style("stroke-width", "1px");
-
-    // Draw polygons
     const sel = svg.selectAll("path.state")
       .data(features)
       .enter()
