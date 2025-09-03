@@ -195,13 +195,13 @@ async function drawSubdivisionMap(svgId, onReady){
   const svg=d3.select(svgId);
   svg.selectAll("*").remove();
 
-  // Force a visible drawing area
+  // Size + viewBox so the drawing area is definitely visible
   const width = 860, height = 580;
   svg.attr("width", width).attr("height", height)
      .attr("viewBox", `0 0 ${width} ${height}`)
      .attr("preserveAspectRatio","xMidYMid meet");
 
-  // Inject CSS to defeat any external rules hiding paths
+  // Add a tiny CSS override to prevent any external rule from hiding paths
   if (!document.getElementById("map-hardening-css")) {
     const styleEl = document.createElement("style");
     styleEl.id = "map-hardening-css";
@@ -215,6 +215,7 @@ async function drawSubdivisionMap(svgId, onReady){
         display: inline !important;
         visibility: visible !important;
       }
+      .map-wrapper svg { background: transparent !important; }
     `;
     document.head.appendChild(styleEl);
   }
@@ -224,22 +225,20 @@ async function drawSubdivisionMap(svgId, onReady){
     const {features,nameProp}=normalizeToFeatures(raw);
     const fc = { type:"FeatureCollection", features };
 
+    // Auto-fit projection to your data
     const projection = d3.geoMercator();
     const path = d3.geoPath().projection(projection);
     projection.fitSize([width, height], fc);
 
+    // Debug: show computed bounds (and a red rectangle around them)
     const bounds = path.bounds(fc);
     console.log("[Bounds]", bounds);
-
-    // Debug frame (visible red rectangle around map extent)
     svg.append("rect")
       .attr("x", bounds[0][0])
       .attr("y", bounds[0][1])
       .attr("width", Math.max(1, bounds[1][0] - bounds[0][0]))
       .attr("height", Math.max(1, bounds[1][1] - bounds[0][1]))
-      .style("fill", "none")
-      .style("stroke", "red")
-      .style("stroke-width", "1px");
+      .style("fill", "none").style("stroke", "red").style("stroke-width", "1px");
 
     // Draw polygons
     const sel = svg.selectAll("path.state")
@@ -248,7 +247,11 @@ async function drawSubdivisionMap(svgId, onReady){
       .append("path")
       .attr("class","state")
       .attr("d", path)
-      .attr("id", d=> String(d.properties[nameProp]).trim());
+      .attr("id", d=> String(d.properties[nameProp]).trim())
+      .style("fill", "#ccc", "important")
+      .style("stroke", "#333", "important")
+      .style("stroke-width", "1px", "important")
+      .style("vector-effect", "non-scaling-stroke", "important");
 
     console.log("[Draw] paths rendered:", sel.size());
     onReady && onReady();
@@ -272,7 +275,6 @@ function paintMapsFromTable(){
     const d2=row.querySelector("select.day2")?.value;
     const c1=(window.forecastColors||{})[d1]||"#ccc";
     const c2=(window.forecastColors||{})[d2]||"#ccc";
-
     d3.selectAll(`#indiaSubMapDay1 [id='${cssEscape(geo)}']`).style("fill", c1, "important");
     d3.selectAll(`#indiaSubMapDay2 [id='${cssEscape(geo)}']`).style("fill", c2, "important");
   });
@@ -283,10 +285,8 @@ function paintMapsFromTable(){
  ***********************/
 window.onload = ()=>{
   if(typeof updateISTDate==="function") updateISTDate();
-
   ensureTable();
   ensureMaps();
-
   buildSubdivisionTable();
   drawSubdivisionMap("#indiaSubMapDay1", ()=> {
     drawSubdivisionMap("#indiaSubMapDay2", ()=> {
