@@ -1,60 +1,62 @@
-
-// === Forecast color palette ===
-const forecastColors = {
-  "Clear Sky": "#A7D8EB",           // 0–10%
-  "Low Cloud Cover": "#C4E17F",     // 10–30%
-  "Medium Cloud Cover": "#FFF952",  // 30–50%
-  "High Cloud Cover": "#E69536",    // 50–75%
-  "Overcast Cloud Cover": "#FF4D4D" // 75–100%
+// ---- COLORS + OPTIONS (global) ----
+window.forecastColors = {
+  "Clear Sky": "#A7D8EB",
+  "Low Cloud Cover": "#C4E17F",
+  "Medium Cloud Cover": "#FFF952",
+  "High Cloud Cover": "#E69536",
+  "Overcast Cloud Cover": "#FF4D4D"
 };
-const forecastOptions = Object.keys(forecastColors);
+window.forecastOptions = Object.keys(window.forecastColors);
 
-// === Subdivision master list (single table). Bihar excluded ===
-// Column order: [A serial, B forecast (dropdown), C state, D subdivision, E sites]
-const subdivisions = [
+// ---- SUBDIVISION ROWS (global) ----
+// Keep labels exactly as your table wants (State & Sub Division columns)
+window.subdivisions = [
   // Punjab
   { state: "Punjab",            name: "Punjab" },
 
-  // Rajasthan (split)
-  { state: "Rajasthan",         name: "West Rajasthan" },
-  { state: "Rajasthan",         name: "East Rajasthan" },
+  // Rajasthan
+  { state: "Rajasthan",         name: "W-Raj" },
+  { state: "Rajasthan",         name: "E-Raj" },
 
-  // Gujarat (split)
-  { state: "Gujarat",           name: "West Gujarat" },      // Saurashtra & Kutch
-  { state: "Gujarat",           name: "East Gujarat Region" }, // Gujarat Region
+  // Gujarat
+  { state: "Gujarat",           name: "W-Gujarat (Saurashtra & Kachh)" },
+  { state: "Gujarat",           name: "E-Gujarat Region" },
 
-  // Uttar Pradesh (split)
-  { state: "Uttar Pradesh",     name: "West Uttar Pradesh" },
-  { state: "Uttar Pradesh",     name: "East Uttar Pradesh" },
+  // Uttar Pradesh  (note: your sheet spells "Utter Pradesh"; keep it if you want)
+  { state: "Utter Pradesh",     name: "W-UP" },
+  { state: "Utter Pradesh",     name: "E-UP" },
 
-  // Madhya Pradesh (split)
-  { state: "Madhya Pradesh",    name: "West Madhya Pradesh" },
-  { state: "Madhya Pradesh",    name: "East Madhya Pradesh" },
+  // Bihar
+  { state: "Bihar",             name: "Bihar" },
+
+  // Madhya Pradesh
+  { state: "Madhya Pradesh",    name: "W-MP" },
+  { state: "Madhya Pradesh",    name: "E-MP" },
 
   // Chhattisgarh
   { state: "Chhattisgarh",      name: "Chhattisgarh" },
 
-  // Maharashtra (3 parts)
-  { state: "Maharashtra",       name: "Madhya_MH" },     // Madhya Maharashtra
+  // Maharashtra
+  { state: "Maharashtra",       name: "Madhya -MH" },
   { state: "Maharashtra",       name: "Marathwada" },
   { state: "Maharashtra",       name: "Vidarbha" },
 
   // Telangana
   { state: "Telangana",         name: "Telangana" },
 
-  // Andhra Pradesh (2 parts)
-  { state: "Andhra Pradesh",    name: "Andhra Pradesh" },     // Coastal Andhra Pradesh
-  { state: "Andhra Pradesh",    name: "SW-AP (Rayalaseema)" },// Rayalaseema
+  // Andhra Pradesh
+  { state: "Andhra Pradesh",    name: "Andhra Pradesh" },
+  { state: "Andhra Pradesh",    name: "SW-AP (Rayalaseema)" },
 
-  // Karnataka (split)
-  { state: "Karnataka",         name: "North Karnataka" },    // North Interior Karnataka
-  { state: "Karnataka",         name: "South Karnataka" },    // South Interior Karnataka
+  // Karnataka
+  { state: "Karnataka",         name: "North-Karnataka" },
+  { state: "Karnataka",         name: "South- Karnataka" },
 
   // Tamil Nadu
   { state: "Tamil Nadu",        name: "Tamil Nadu" }
 ];
 
-// IST date on the header
+// ---- Date in header (kept as a normal function) ----
 function updateISTDate() {
   const istOffsetMin = 330;
   const nowUtc = new Date();
