@@ -71,3 +71,38 @@ svg { width: 100%; height: 520px; display: block; border: 1px solid #ccc; margin
 /* Button */
 button { display: block; margin: 30px auto 10px; padding: 10px 20px; font-size: 14px; background: #007bff; border: none; color: #fff; border-radius: 6px; cursor: pointer; }
 button:hover { background: #0056b3; }
+
+/* --- Map visibility hardening --- */
+.map-wrapper {
+  position: relative !important;
+  background: transparent !important;
+  box-shadow: none !important;
+}
+.map-wrapper::before,
+.map-wrapper::after {
+  display: none !important;
+  background: transparent !important;
+  content: none !important;
+}
+
+/* Make sure the SVG itself is on top and transparent */
+.map-wrapper svg {
+  width: 100%;
+  height: 260px;            /* or whatever height you want */
+  background: transparent !important;
+  background-color: transparent !important;
+  position: relative !important;
+  z-index: 2 !important;
+}
+
+/* Ensure paths are actually visible */
+#indiaSubMapDay1 path.state,
+#indiaSubMapDay2 path.state {
+  fill: #ccc !important;
+  stroke: #333 !important;
+  stroke-width: 1px !important;
+  vector-effect: non-scaling-stroke !important;
+  opacity: 1 !important;
+  visibility: visible !important;
+  display: inline !important;
+}
