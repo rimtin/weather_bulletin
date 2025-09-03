@@ -6,6 +6,7 @@ const SUBDIV_GEO_URLS = [
   "assets/indian_met_zones.geojson",
   "https://raw.githubusercontent.com/rimtin/weather_bulletin/main/assets/indian_met_zones.geojson",
   "https://cdn.jsdelivr.net/gh/rimtin/weather_bulletin@main/assets/indian_met_zones.geojson"
+  "https://rimtin.github.io/weather_bulletin/assets/indian_met_zones.geojson"
 ];
 
 // Table label → GeoJSON name mapping (match EXACT strings in your GeoJSON)
