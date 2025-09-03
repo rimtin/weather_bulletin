@@ -178,14 +178,12 @@ function buildSubdivisionTable(){
     const label=tr.getAttribute("data-subdiv");
     const geo=TableToGeoName[label]||label;
     tr.addEventListener("mouseenter", ()=> {
-      d3.selectAll(
-        `#indiaSubMapDay1 [id='${cssEscape(geo)}'], #indiaSubMapDay2 [id='${cssEscape(geo)}']`
-      ).style("stroke-width","2.5px","important");
+      d3.selectAll(`#indiaSubMapDay1 [id='${cssEscape(geo)}'], #indiaSubMapDay2 [id='${cssEscape(geo)}']`)
+        .style("stroke-width","2.5px","important");
     });
     tr.addEventListener("mouseleave", ()=> {
-      d3.selectAll(
-        `#indiaSubMapDay1 [id='${cssEscape(geo)}'], #indiaSubMapDay2 [id='${cssEscape(geo)}']`
-      ).style("stroke-width","1px","important");
+      d3.selectAll(`#indiaSubMapDay1 [id='${cssEscape(geo)}'], #indiaSubMapDay2 [id='${cssEscape(geo)}']`)
+        .style("stroke-width","1px","important");
     });
   });
 }
@@ -197,46 +195,60 @@ async function drawSubdivisionMap(svgId, onReady){
   const svg=d3.select(svgId);
   svg.selectAll("*").remove();
 
-  // Give the SVG a real size + viewBox to guarantee visibility
+  // Force a visible drawing area
   const width = 860, height = 580;
   svg.attr("width", width).attr("height", height)
      .attr("viewBox", `0 0 ${width} ${height}`)
      .attr("preserveAspectRatio","xMidYMid meet");
 
-  // Optional: hatch pattern
-  const defs=svg.append("defs");
-  defs.append("pattern")
-    .attr("id","diagonalHatch")
-    .attr("patternUnits","userSpaceOnUse")
-    .attr("width",6).attr("height",6)
-    .append("path").attr("d","M0,0 l6,6")
-      .style("stroke","#999","important")
-      .style("stroke-width","1px","important");
+  // Inject CSS to defeat any external rules hiding paths
+  if (!document.getElementById("map-hardening-css")) {
+    const styleEl = document.createElement("style");
+    styleEl.id = "map-hardening-css";
+    styleEl.textContent = `
+      #indiaSubMapDay1 path.state, #indiaSubMapDay2 path.state {
+        fill: #ccc !important;
+        stroke: #333 !important;
+        stroke-width: 1px !important;
+        vector-effect: non-scaling-stroke !important;
+        opacity: 1 !important;
+        display: inline !important;
+        visibility: visible !important;
+      }
+    `;
+    document.head.appendChild(styleEl);
+  }
 
   try {
     const raw = await loadGeoJSON(SUBDIV_GEO_URLS);
     const {features,nameProp}=normalizeToFeatures(raw);
     const fc = { type:"FeatureCollection", features };
 
-    // Auto-fit projection to your data
     const projection = d3.geoMercator();
     const path = d3.geoPath().projection(projection);
     projection.fitSize([width, height], fc);
 
-    // Draw polygons (force styles with !important)
+    const bounds = path.bounds(fc);
+    console.log("[Bounds]", bounds);
+
+    // Debug frame (visible red rectangle around map extent)
+    svg.append("rect")
+      .attr("x", bounds[0][0])
+      .attr("y", bounds[0][1])
+      .attr("width", Math.max(1, bounds[1][0] - bounds[0][0]))
+      .attr("height", Math.max(1, bounds[1][1] - bounds[0][1]))
+      .style("fill", "none")
+      .style("stroke", "red")
+      .style("stroke-width", "1px");
+
+    // Draw polygons
     const sel = svg.selectAll("path.state")
       .data(features)
       .enter()
       .append("path")
       .attr("class","state")
       .attr("d", path)
-      .attr("id", d=> String(d.properties[nameProp]).trim())
-      .style("fill", "#ccc", "important")
-      .style("stroke", "#333", "important")
-      .style("stroke-width", "1px", "important")
-      .style("vector-effect", "non-scaling-stroke", "important")
-      .on("mouseover", function(){ d3.select(this).style("stroke-width","2.5px","important"); })
-      .on("mouseout",  function(){ d3.select(this).style("stroke-width","1px","important"); });
+      .attr("id", d=> String(d.properties[nameProp]).trim());
 
     console.log("[Draw] paths rendered:", sel.size());
     onReady && onReady();
@@ -261,7 +273,6 @@ function paintMapsFromTable(){
     const c1=(window.forecastColors||{})[d1]||"#ccc";
     const c2=(window.forecastColors||{})[d2]||"#ccc";
 
-    // color ALL parts (multi-part features)
     d3.selectAll(`#indiaSubMapDay1 [id='${cssEscape(geo)}']`).style("fill", c1, "important");
     d3.selectAll(`#indiaSubMapDay2 [id='${cssEscape(geo)}']`).style("fill", c2, "important");
   });
