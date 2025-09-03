@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Cloud Coverage Forecast</title>
+  <title>Cloud Coverage Forecast — Sub Divisions Only</title>
 
   <!-- Styles -->
   <link rel="stylesheet" href="style.css" />
@@ -18,12 +18,12 @@
   <div class="container">
     <div id="pdf-area">
 
-      <!-- Page 1: Tables -->
+      <!-- Page 1: One table + map -->
       <div class="page page-1">
         <h1 class="center-title">Cloud Coverage Forecast Bulletin</h1>
         <h2 id="forecast-date" class="center-date"></h2>
 
-        <!-- Cloud Cover Classification (Excel colors) -->
+        <!-- Cloud Cover Classification -->
         <div class="cloud-cover-reference">
           <h3>Cloud Cover Classification</h3>
           <table class="cloud-info-table">
@@ -38,8 +38,8 @@
             <tbody>
               <tr class="swatch-clear"><td>1</td><td>0–10%</td><td>Clear Sky</td><td>No Cloud</td></tr>
               <tr class="swatch-low"><td>2</td><td>10–30%</td><td>Low Cloud Cover</td><td>Few Clouds</td></tr>
-              <tr class="swatch-medium"><td>3</td><td>30–50%</td><td>Medium Cloud Cover</td><td>Scattered Clouds / Partly Cloudy</td></tr>
-              <tr class="swatch-high"><td>4</td><td>50–75%</td><td>High Cloud Cover</td><td>Broken Clouds / Mostly Cloudy</td></tr>
+              <tr class="swatch-medium"><td>3</td><td>30–50%</td><td>Medium Cloud Cover</td><td>Scattered / Partly Cloudy</td></tr>
+              <tr class="swatch-high"><td>4</td><td>50–75%</td><td>High Cloud Cover</td><td>Broken / Mostly Cloudy</td></tr>
               <tr class="swatch-overcast"><td>5</td><td>75–100%</td><td>Overcast Cloud Cover</td><td>Cloudy / Overcast</td></tr>
             </tbody>
             <tfoot>
@@ -50,74 +50,41 @@
           </table>
         </div>
 
-        <!-- Forecast Dropdown Table -->
-        <!-- Column order here mirrors your sheet: A=S.No, B=State, D=Day1, E=Day2 -->
-        <h3 class="table-title" style="text-align:left;">Forecast</h3>
-        <table class="forecast-table" id="forecast-table">
-          <thead>
-            <tr>
-              <th>A: S.No.</th>
-              <th>B: State</th>
-              <th>D: Day 1</th>
-              <th>E: Day 2</th>
-            </tr>
-          </thead>
-          <tbody id="forecast-table-body"></tbody>
-        </table>
-
-        <!-- Subdivision Table (chart-only) -->
+        <!-- ONE TABLE ONLY -->
+        <!-- Column B (Forecast) drives map color -->
         <h3 class="table-title" style="text-align:left;">Sub Divisions</h3>
-        <table class="forecast-table subdivision-table">
+        <table class="forecast-table subdivision-table" id="subdivision-table">
           <thead>
             <tr>
-              <th>S. No.</th>
+              <th>A: S. No.</th>
+              <th>B: Forecast (drives map)</th>
               <th>State</th>
-              <th>Sub S. No.</th>
               <th>Sub Division</th>
               <th>No. Solar Site</th>
             </tr>
           </thead>
           <tbody id="subdivision-table-body"></tbody>
         </table>
+
+        <!-- Map (colors reflect Column B, applied to the row’s Sub Division) -->
+        <h3 class="map-label">Forecast Map (by Sub Division)</h3>
+        <div class="map-wrapper">
+          <svg id="indiaSubdivMap"></svg>
+          <div class="map-legend">
+            <ul>
+              <li><span class="legend-swatch swatch-clear"></span> Clear Sky</li>
+              <li><span class="legend-swatch swatch-low"></span> Low Cloud Cover</li>
+              <li><span class="legend-swatch swatch-medium"></span> Medium Cloud Cover</li>
+              <li><span class="legend-swatch swatch-high"></span> High Cloud Cover</li>
+              <li><span class="legend-swatch swatch-overcast"></span> Overcast Cloud Cover</li>
+              <li><span class="legend-pattern"></span> No Forecast Available</li>
+            </ul>
+          </div>
+        </div>
       </div>
 
-      <!-- Page 2: Forecast Maps -->
+      <!-- Page 2: Notes -->
       <div class="page page-2">
-        <!-- Day 1 Map (uses B + D) -->
-        <h3 class="map-label">Day 1 Forecast Map</h3>
-        <div class="map-wrapper">
-          <svg id="indiaMapDay1"></svg>
-          <div class="map-legend">
-            <ul>
-              <li><span class="legend-swatch swatch-clear"></span> Clear Sky</li>
-              <li><span class="legend-swatch swatch-low"></span> Low Cloud Cover</li>
-              <li><span class="legend-swatch swatch-medium"></span> Medium Cloud Cover</li>
-              <li><span class="legend-swatch swatch-high"></span> High Cloud Cover</li>
-              <li><span class="legend-swatch swatch-overcast"></span> Overcast Cloud Cover</li>
-              <li><span class="legend-pattern"></span> No Forecast Available</li>
-            </ul>
-          </div>
-        </div>
-
-        <!-- Day 2 Map (uses B + E) -->
-        <h3 class="map-label">Day 2 Forecast Map</h3>
-        <div class="map-wrapper">
-          <svg id="indiaMapDay2"></svg>
-          <div class="map-legend">
-            <ul>
-              <li><span class="legend-swatch swatch-clear"></span> Clear Sky</li>
-              <li><span class="legend-swatch swatch-low"></span> Low Cloud Cover</li>
-              <li><span class="legend-swatch swatch-medium"></span> Medium Cloud Cover</li>
-              <li><span class="legend-swatch swatch-high"></span> High Cloud Cover</li>
-              <li><span class="legend-swatch swatch-overcast"></span> Overcast Cloud Cover</li>
-              <li><span class="legend-pattern"></span> No Forecast Available</li>
-            </ul>
-          </div>
-        </div>
-      </div>
-
-      <!-- Page 3: Notes -->
-      <div class="page page-3">
         <h3 style="text-align:left;">Weather System</h3>
         <div id="bulletinInputEnd" class="bulletin-text editable-text" contenteditable="true">
           Add your notes here...
