@@ -1,7 +1,6 @@
-// ---- COLORS + OPTIONS (global) ----
-// Put "No Forecast Available" FIRST so it's the default in the selects
+// Put this FIRST so it's the default in the selects
 window.forecastColors = {
-  "No Forecast Available": "pattern",          // use hatch
+  "No Forecast Available": "pattern",   // special token handled in app.js
   "Clear Sky": "#A7D8EB",
   "Low Cloud Cover": "#C4E17F",
   "Medium Cloud Cover": "#FFF952",
@@ -9,6 +8,7 @@ window.forecastColors = {
   "Overcast Cloud Cover": "#FF4D4D"
 };
 window.forecastOptions = Object.keys(window.forecastColors);
+
 
 // ---- SUBDIVISION ROWS (global) ----
 // Keep labels exactly as your table wants (State & Sub Division columns)
