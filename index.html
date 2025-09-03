@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Cloud Coverage Forecast — Sub Divisions Only</title>
+  <title>Cloud Coverage Forecast — Sub Divisions</title>
 
   <!-- Styles -->
   <link rel="stylesheet" href="style.css" />
@@ -18,12 +18,12 @@
   <div class="container">
     <div id="pdf-area">
 
-      <!-- Page 1: One table + map -->
+      <!-- Page 1: Table -->
       <div class="page page-1">
         <h1 class="center-title">Cloud Coverage Forecast Bulletin</h1>
         <h2 id="forecast-date" class="center-date"></h2>
 
-        <!-- Cloud Cover Classification -->
+        <!-- Classification (kept) -->
         <div class="cloud-cover-reference">
           <h3>Cloud Cover Classification</h3>
           <table class="cloud-info-table">
@@ -50,26 +50,44 @@
           </table>
         </div>
 
-        <!-- ONE TABLE ONLY -->
-        <!-- Column B (Forecast) drives map color -->
+        <!-- ONE TABLE matching your image -->
+        <!-- Columns: S.No | State | Sub Division | No. Solar Site | Day1 | Day2 -->
         <h3 class="table-title" style="text-align:left;">Sub Divisions</h3>
         <table class="forecast-table subdivision-table" id="subdivision-table">
           <thead>
             <tr>
-              <th>A: S. No.</th>
-              <th>B: Forecast (drives map)</th>
+              <th>S. No.</th>
               <th>State</th>
               <th>Sub Division</th>
               <th>No. Solar Site</th>
+              <th>Day 1</th>
+              <th>Day 2</th>
             </tr>
           </thead>
           <tbody id="subdivision-table-body"></tbody>
         </table>
+      </div>
 
-        <!-- Map (colors reflect Column B, applied to the row’s Sub Division) -->
-        <h3 class="map-label">Forecast Map (by Sub Division)</h3>
+      <!-- Page 2: Two subdivision maps -->
+      <div class="page page-2">
+        <h3 class="map-label">Day 1 Forecast Map (Sub Division)</h3>
         <div class="map-wrapper">
-          <svg id="indiaSubdivMap"></svg>
+          <svg id="indiaSubMapDay1"></svg>
+          <div class="map-legend">
+            <ul>
+              <li><span class="legend-swatch swatch-clear"></span> Clear Sky</li>
+              <li><span class="legend-swatch swatch-low"></span> Low Cloud Cover</li>
+              <li><span class="legend-swatch swatch-medium"></span> Medium Cloud Cover</li>
+              <li><span class="legend-swatch swatch-high"></span> High Cloud Cover</li>
+              <li><span class="legend-swatch swatch-overcast"></span> Overcast Cloud Cover</li>
+              <li><span class="legend-pattern"></span> No Forecast Available</li>
+            </ul>
+          </div>
+        </div>
+
+        <h3 class="map-label">Day 2 Forecast Map (Sub Division)</h3>
+        <div class="map-wrapper">
+          <svg id="indiaSubMapDay2"></svg>
           <div class="map-legend">
             <ul>
               <li><span class="legend-swatch swatch-clear"></span> Clear Sky</li>
@@ -83,8 +101,8 @@
         </div>
       </div>
 
-      <!-- Page 2: Notes -->
-      <div class="page page-2">
+      <!-- Page 3: Notes -->
+      <div class="page page-3">
         <h3 style="text-align:left;">Weather System</h3>
         <div id="bulletinInputEnd" class="bulletin-text editable-text" contenteditable="true">
           Add your notes here...
@@ -103,17 +121,16 @@
   <script src="app.js"></script>
   <script>
     function downloadPDF() {
-      const element = document.getElementById("pdf-area");
-      if (!element) { alert("PDF container not found!"); return; }
-      const opt = {
+      const el = document.getElementById("pdf-area");
+      if (!el) return alert("PDF container not found!");
+      html2pdf().set({
         margin: 0.3,
         filename: "Cloud_Forecast_Bulletin.pdf",
         image: { type: "jpeg", quality: 0.98 },
         html2canvas: { scale: 2, useCORS: true, allowTaint: true, logging: false },
         jsPDF: { unit: "in", format: "a4", orientation: "portrait" },
         pagebreak: { mode: ["avoid-all", "css", "legacy"] }
-      };
-      html2pdf().set(opt).from(element).save();
+      }).from(el).save();
     }
   </script>
 </body>
