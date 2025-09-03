@@ -2,17 +2,22 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Cloud Coverage Forecast — Sub Divisions</title>
 
   <!-- Styles -->
   <link rel="stylesheet" href="style.css" />
+  <!-- If you don't have print-style.css, you can remove the next line -->
   <link rel="stylesheet" href="print-style.css" media="print" />
 
-  <!-- Libraries -->
-  <script src="https://d3js.org/d3.v7.min.js"></script>
-  <script src="https://unpkg.com/topojson-client@3"></script>
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+  <!-- Libraries (defer keeps order and runs after parse) -->
+  <script defer src="https://d3js.org/d3.v7.min.js"></script>
+  <script defer src="https://unpkg.com/topojson-client@3"></script>
+  <script defer src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+
+  <!-- Your app scripts (data.js MUST come before app.js) -->
+  <script defer src="data.js"></script>
+  <script defer src="app.js"></script>
 </head>
 <body>
   <div class="container">
@@ -23,7 +28,7 @@
         <h1 class="center-title">Cloud Coverage Forecast Bulletin</h1>
         <h2 id="forecast-date" class="center-date"></h2>
 
-        <!-- Classification (kept) -->
+        <!-- Classification -->
         <div class="cloud-cover-reference">
           <h3>Cloud Cover Classification</h3>
           <table class="cloud-info-table">
@@ -50,8 +55,7 @@
           </table>
         </div>
 
-        <!-- ONE TABLE matching your image -->
-        <!-- Columns: S.No | State | Sub Division | No. Solar Site | Day1 | Day2 -->
+        <!-- ONE TABLE -->
         <h3 class="table-title" style="text-align:left;">Sub Divisions</h3>
         <table class="forecast-table subdivision-table" id="subdivision-table">
           <thead>
@@ -116,13 +120,11 @@
     <button id="downloadBtn" onclick="downloadPDF()">Download PDF</button>
   </div>
 
-  <!-- App scripts -->
-  <script src="data.js"></script>
-  <script src="app.js"></script>
+  <!-- PDF download helper -->
   <script>
     function downloadPDF() {
       const el = document.getElementById("pdf-area");
-      if (!el) return alert("PDF container not found!");
+      if (!el) { alert("PDF container not found!"); return; }
       html2pdf().set({
         margin: 0.3,
         filename: "Cloud_Forecast_Bulletin.pdf",
