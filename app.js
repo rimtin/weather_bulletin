@@ -197,31 +197,34 @@ async function drawSubdivisionMap(svgId, onReady){
   const svg=d3.select(svgId);
   svg.selectAll("*").remove();
 
-  // Visible drawing area
+  // Give the SVG a real size + viewBox to guarantee visibility
   const width = 860, height = 580;
-  svg.attr("viewBox", `0 0 ${width} ${height}`)
+  svg.attr("width", width).attr("height", height)
+     .attr("viewBox", `0 0 ${width} ${height}`)
      .attr("preserveAspectRatio","xMidYMid meet");
 
-  // Optional: hatch pattern (kept for legend)
+  // Optional: hatch pattern
   const defs=svg.append("defs");
   defs.append("pattern")
     .attr("id","diagonalHatch")
     .attr("patternUnits","userSpaceOnUse")
     .attr("width",6).attr("height",6)
-    .append("path").attr("d","M0,0 l6,6").style("stroke","#999","important").style("stroke-width","1px","important");
+    .append("path").attr("d","M0,0 l6,6")
+      .style("stroke","#999","important")
+      .style("stroke-width","1px","important");
 
   try {
     const raw = await loadGeoJSON(SUBDIV_GEO_URLS);
     const {features,nameProp}=normalizeToFeatures(raw);
     const fc = { type:"FeatureCollection", features };
 
-    // Auto-fit projection
+    // Auto-fit projection to your data
     const projection = d3.geoMercator();
     const path = d3.geoPath().projection(projection);
     projection.fitSize([width, height], fc);
 
-    // Draw polygons (force styles with !important to beat CSS)
-    svg.selectAll("path.state")
+    // Draw polygons (force styles with !important)
+    const sel = svg.selectAll("path.state")
       .data(features)
       .enter()
       .append("path")
@@ -231,9 +234,11 @@ async function drawSubdivisionMap(svgId, onReady){
       .style("fill", "#ccc", "important")
       .style("stroke", "#333", "important")
       .style("stroke-width", "1px", "important")
+      .style("vector-effect", "non-scaling-stroke", "important")
       .on("mouseover", function(){ d3.select(this).style("stroke-width","2.5px","important"); })
       .on("mouseout",  function(){ d3.select(this).style("stroke-width","1px","important"); });
 
+    console.log("[Draw] paths rendered:", sel.size());
     onReady && onReady();
   } catch (err) {
     console.error("Geo load error:", err);
@@ -256,7 +261,7 @@ function paintMapsFromTable(){
     const c1=(window.forecastColors||{})[d1]||"#ccc";
     const c2=(window.forecastColors||{})[d2]||"#ccc";
 
-    // color ALL parts (use !important to beat CSS)
+    // color ALL parts (multi-part features)
     d3.selectAll(`#indiaSubMapDay1 [id='${cssEscape(geo)}']`).style("fill", c1, "important");
     d3.selectAll(`#indiaSubMapDay2 [id='${cssEscape(geo)}']`).style("fill", c2, "important");
   });
