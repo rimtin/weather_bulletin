@@ -1,6 +1,8 @@
 /***********************
  * CONFIG
  ***********************/
+const SUBDIV_GEO_URL = "assets/indian_met_zones.geojson";
+
 const SUBDIV_GEO_URL =
   // RAW URL to your GeoJSON in /assets
   "https://raw.githubusercontent.com/rimtin/weather_bulletin/main/assets/indian_met_zones.geojson";
