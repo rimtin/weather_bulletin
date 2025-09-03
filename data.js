@@ -1,5 +1,7 @@
 // ---- COLORS + OPTIONS (global) ----
+// Put "No Forecast Available" FIRST so it's the default in the selects
 window.forecastColors = {
+  "No Forecast Available": "pattern",          // use hatch
   "Clear Sky": "#A7D8EB",
   "Low Cloud Cover": "#C4E17F",
   "Medium Cloud Cover": "#FFF952",
@@ -15,23 +17,21 @@ window.subdivisions = [
   { state: "Punjab",            name: "Punjab" },
 
   // Rajasthan
-  { state: "Rajasthan",         name: "W-Raj" },
-  { state: "Rajasthan",         name: "E-Raj" },
+  { state: "Rajasthan",         name: "West-Rajasthan" },
+  { state: "Rajasthan",         name: "East-Rajasthan" },
 
   // Gujarat
-  { state: "Gujarat",           name: "W-Gujarat (Saurashtra & Kachh)" },
-  { state: "Gujarat",           name: "E-Gujarat Region" },
+  { state: "Gujarat",           name: "West-Gujarat (Saurashtra & Kachh)" },
+  { state: "Gujarat",           name: "East-Gujarat Region" },
 
-  // Uttar Pradesh  (note: your sheet spells "Utter Pradesh"; keep it if you want)
-  { state: "Utter Pradesh",     name: "W-UP" },
-  { state: "Utter Pradesh",     name: "E-UP" },
+  // Uttar Pradesh
+  { state: "Uttar Pradesh",     name: "West-UP" },
+  { state: "Uttar Pradesh",     name: "East-UP" },
 
-  // Bihar
-  { state: "Bihar",             name: "Bihar" },
 
   // Madhya Pradesh
-  { state: "Madhya Pradesh",    name: "W-MP" },
-  { state: "Madhya Pradesh",    name: "E-MP" },
+  { state: "Madhya Pradesh",    name: "West-MP" },
+  { state: "Madhya Pradesh",    name: "East-MP" },
 
   // Chhattisgarh
   { state: "Chhattisgarh",      name: "Chhattisgarh" },
@@ -56,7 +56,7 @@ window.subdivisions = [
   { state: "Tamil Nadu",        name: "Tamil Nadu" }
 ];
 
-// ---- Date in header (kept as a normal function) ----
+// ---- Date in header ----
 function updateISTDate() {
   const istOffsetMin = 330;
   const nowUtc = new Date();
