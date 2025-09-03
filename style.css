@@ -25,7 +25,7 @@ body { font-family: Arial, sans-serif; background: #f2f2f2; display: flex; justi
 .forecast-table th, .forecast-table td { border: 1.4px solid #222; padding: 6px; text-align: center; vertical-align: middle; }
 .cloud-info-table th, .forecast-table th { background-color: #cce6ff; font-weight: bold; }
 
-/* Stripe only forecast/subdivision tables (not the colored classification swatches) */
+/* Zebra stripe only for data tables */
 .forecast-table tbody tr:nth-child(even) { background: #f9f9f9; }
 .cloud-cover-reference .cloud-info-table tbody tr:nth-child(even) { background: transparent; }
 
@@ -36,19 +36,18 @@ select { width: 100%; padding: 4px; font-size: 12px; }
 .forecast-table tbody tr:hover { background: #e9f2ff !important; }
 .forecast-table td select:hover { outline: 2px solid #99c2ff; cursor: pointer; }
 
-/* Maps */
+/* Map */
 .map-label { text-align: center; font-weight: bold; font-size: 14px; margin: 10px 0; }
 .map-wrapper { margin: 10px auto; max-width: 720px; position: relative; page-break-inside: avoid; }
 svg { width: 100%; height: 520px; display: block; border: 1px solid #ccc; margin: auto; }
 
-/* Legend (color swatches to match Excel) */
 .map-legend { position: absolute; top: 12px; right: 12px; background: #fff; border: 1px solid #ccc; padding: 8px 12px; font-size: 12px; border-radius: 6px; box-shadow: 0 0 4px rgba(0,0,0,0.1); width: fit-content; z-index: 10; }
 .map-legend ul { list-style: none; padding: 0; margin: 0; }
 .map-legend li { margin-bottom: 6px; display: flex; align-items: center; }
 .legend-swatch { width: 18px; height: 18px; border: 1.4px solid #222; margin-right: 6px; display: inline-block; border-radius: 3px; }
 .map-legend .legend-pattern { display:inline-block; width:18px; height:18px; margin-right:6px; border:1.4px solid #222; border-radius:3px; background-image: repeating-linear-gradient(45deg, #999 0, #999 1px, transparent 1px, transparent 4px); }
 
-/* Excel palette swatches — brighter & sharp */
+/* Excel palette swatches — bright */
 .swatch-clear    { background:#9ED1E6 !important; color:#063647; font-weight:600; }
 .swatch-low      { background:#B9DB6E !important; color:#2C4400; font-weight:600; }
 .swatch-medium   { background:#FFE93A !important; color:#4A3D00; font-weight:700; }
@@ -58,19 +57,15 @@ svg { width: 100%; height: 520px; display: block; border: 1px solid #ccc; margin
 /* Subdivision table tweaks */
 .subdivision-table td, .subdivision-table th { text-align: left; }
 .subdivision-table td:nth-child(1),
-.subdivision-table td:nth-child(3),
-.subdivision-table th:nth-child(1),
-.subdivision-table th:nth-child(3) { text-align: center; }
+.subdivision-table th:nth-child(1) { text-align: center; width: 52px; }
+.subdivision-table td:nth-child(2), .subdivision-table th:nth-child(2) { width: 160px; }
 .subdivision-table td:nth-child(5), .subdivision-table th:nth-child(5) { width: 140px; }
 
-/* Note row under classification */
+/* Note row */
 .note-row { text-align: left; padding: 8px 10px; font-size: 12px; background: #fff9e6; color: #5a4100; font-weight: 600; }
 
-/* Map state hover effect */
+/* Map state hover */
 .state:hover { filter: drop-shadow(0 0 3px rgba(0,0,0,0.25)); cursor: pointer; }
-
-/* Map icons */
-.forecast-icon { font-size: 16px; text-align: center; display: block; pointer-events: none; }
 
 /* Button */
 button { display: block; margin: 30px auto 10px; padding: 10px 20px; font-size: 14px; background: #007bff; border: none; color: #fff; border-radius: 6px; cursor: pointer; }
