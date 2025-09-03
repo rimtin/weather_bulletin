@@ -5,7 +5,7 @@ const SUBDIV_GEO_URL =
   // ❗ Use a RAW file URL here (not a GitHub “blob” page).
   // Example if your file lives in your repo:
   // "https://raw.githubusercontent.com/<your-user>/<your-repo>/<branch>/weather_bulletin/indian_met_zones.geojson"
-  "https://raw.githubusercontent.com/udit-001/india-maps-data/main/geojson/india.geojson"; // ← replace with your subdivisions RAW URL
+  "https://raw.githubusercontent.com/rimtin/weather_bulletin/main/indian_met_zones.geojson"; // ← replace with your subdivisions RAW URL
 
 // Table label → GeoJSON name mapping
 const TableToGeoName = {
