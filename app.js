@@ -1,13 +1,14 @@
 /***********************
  * CONFIG
  ***********************/
-const SUBDIV_GEO_URL = "assets/indian_met_zones.geojson";
+// Try same-origin file first (GitHub Pages), then RAW, then jsDelivr.
+const SUBDIV_GEO_URLS = [
+  "assets/indian_met_zones.geojson",
+  "https://raw.githubusercontent.com/rimtin/weather_bulletin/main/assets/indian_met_zones.geojson",
+  "https://cdn.jsdelivr.net/gh/rimtin/weather_bulletin@main/assets/indian_met_zones.geojson"
+];
 
-const SUBDIV_GEO_URL =
-  // RAW URL to your GeoJSON in /assets
-  "https://raw.githubusercontent.com/rimtin/weather_bulletin/main/assets/indian_met_zones.geojson";
-
-// Table label → GeoJSON name mapping (match EXACT strings in your GeoJSON)
+// Table label → GeoJSON name mapping (match EXACT names in your file)
 const TableToGeoName = {
   "Punjab": "Punjab",
   "Telangana": "Telangana",
@@ -45,11 +46,6 @@ const TableToGeoName = {
 };
 
 /***********************
- * DATA (from data.js)
- ***********************/
-// uses global `subdivisions`, `forecastOptions`, `forecastColors`, `updateISTDate`
-
-/***********************
  * UTIL
  ***********************/
 function cssEscape(s){ return String(s).replace(/'/g,"\\'"); }
@@ -73,8 +69,23 @@ function normalizeToFeatures(raw){
   return {features, nameProp};
 }
 
+// sequential loader with fallbacks
+async function loadGeoJSON(urls) {
+  let lastErr;
+  for (const url of urls) {
+    try {
+      const data = await d3.json(url);
+      return data;
+    } catch (e) {
+      lastErr = e;
+      // continue to next URL
+    }
+  }
+  throw lastErr || new Error("All GeoJSON URLs failed");
+}
+
 /***********************
- * DOM BUILDERS (auto-create if missing)
+ * DOM BUILDERS
  ***********************/
 function ensureTable(){
   let table = document.getElementById("subdivision-table");
@@ -173,8 +184,8 @@ function buildSubdivisionTable(){
         ${idx===0?`<td rowspan="${rows.length}">${state}</td>`:""}
         <td>${row.name}</td>
         <td contenteditable="true"></td>
-        <td><select class="day1">${forecastOptions.map(o=>`<option>${o}</option>`).join("")}</select></td>
-        <td><select class="day2">${forecastOptions.map(o=>`<option>${o}</option>`).join("")}</select></td>
+        <td><select class="day1">${(window.forecastOptions||[]).map(o=>`<option>${o}</option>`).join("")}</select></td>
+        <td><select class="day2">${(window.forecastOptions||[]).map(o=>`<option>${o}</option>`).join("")}</select></td>
       `;
       tbody.appendChild(tr);
     });
@@ -197,7 +208,7 @@ function buildSubdivisionTable(){
 /***********************
  * MAPS
  ***********************/
-function drawSubdivisionMap(svgId, onReady){
+async function drawSubdivisionMap(svgId, onReady){
   const svg=d3.select(svgId);
   svg.selectAll("*").remove();
 
@@ -211,7 +222,8 @@ function drawSubdivisionMap(svgId, onReady){
   const projection=d3.geoMercator().scale(850).center([89.8,21.5]).translate([430,290]);
   const path=d3.geoPath().projection(projection);
 
-  d3.json(SUBDIV_GEO_URL).then(raw=>{
+  try {
+    const raw = await loadGeoJSON(SUBDIV_GEO_URLS);
     const {features,nameProp}=normalizeToFeatures(raw);
 
     svg.selectAll("path.state")
@@ -228,10 +240,11 @@ function drawSubdivisionMap(svgId, onReady){
       .on("mouseout",  function(){ d3.select(this).attr("stroke-width",1); });
 
     if(typeof onReady==="function") onReady();
-  }).catch(err=>{
+  } catch (err) {
     console.error("Geo load error", err);
-    alert("Could not load the online GeoJSON/TopoJSON. Check SUBDIV_GEO_URL.");
-  });
+    alert("Could not load the sub-division GeoJSON. Check the file path.");
+    if(typeof onReady==="function") onReady();
+  }
 }
 
 function paintMapsFromTable(){
@@ -241,8 +254,8 @@ function paintMapsFromTable(){
     const geo=TableToGeoName[label]||label;
     const d1=row.querySelector("select.day1")?.value;
     const d2=row.querySelector("select.day2")?.value;
-    const c1=forecastColors[d1]||"#ccc";
-    const c2=forecastColors[d2]||"#ccc";
+    const c1=(window.forecastColors||{})[d1]||"#ccc";
+    const c2=(window.forecastColors||{})[d2]||"#ccc";
 
     // color ALL parts (multi-part features)
     d3.selectAll(`#indiaSubMapDay1 [id='${cssEscape(geo)}']`).attr("fill", c1);
