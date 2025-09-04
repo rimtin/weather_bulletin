@@ -197,11 +197,11 @@ function buildSubdivisionTable(){
  * MAPS
  ***********************/
 async function drawSubdivisionMap(svgSelector, onReady){
-  const svg=d3.select(svgSelector);
+  const svg = d3.select(svgSelector);
   svg.selectAll("*").remove();
 
-  // explicit drawing area
-  const width=860, height=280;
+  // Explicit drawing area
+  const width = 860, height = 280;
   svg.attr("width", width).attr("height", height)
      .attr("viewBox", `0 0 ${width} ${height}`)
      .attr("preserveAspectRatio", "xMidYMid meet")
@@ -209,38 +209,63 @@ async function drawSubdivisionMap(svgSelector, onReady){
 
   // pattern for "No Forecast Available"
   const defs=svg.append("defs");
-  const pat=defs.append("pattern")
+  defs.append("pattern")
     .attr("id","diagonalHatch")
     .attr("patternUnits","userSpaceOnUse")
-    .attr("width",6).attr("height",6);
-  pat.append("path")
-    .attr("d","M0,0 l6,6")
-    .attr("stroke","#999").attr("stroke-width",1);
+    .attr("width",6).attr("height",6)
+    .append("path").attr("d","M0,0 l6,6").attr("stroke","#999").attr("stroke-width",1);
 
-  try{
+  try {
     const raw = await loadGeoJSON(SUBDIV_GEO_URLS);
     const {features,nameProp} = normalizeToFeatures(raw);
-    const fc = { type:"FeatureCollection", features };
 
+    // ---- Filter OUTLIERS so the fit isn't ruined by far-away coords ----
+    // Keep only features whose bounds sit roughly over India.
+    const inIndia = f => {
+      const b = d3.geoBounds(f);           // [ [minLon,minLat], [maxLon,maxLat] ]
+      const minLon=b[0][0], minLat=b[0][1], maxLon=b[1][0], maxLat=b[1][1];
+      return (minLon > 60 && maxLon < 100 && minLat > 5 && maxLat < 40);
+    };
+    const clean = features.filter(inIndia);
+    const fc = { type: "FeatureCollection", features: clean.length ? clean : features };
+
+    // ---- Robust "fit" that always fills the svg ----
     const projection = d3.geoMercator();
     const path = d3.geoPath().projection(projection);
-    projection.fitSize([width, height], fc);
+
+    // Compute bounds then set scale/translate manually (instead of fitSize)
+    const b = path.bounds(fc);                             // [[x0,y0],[x1,y1]] in pixels at current (default) proj
+    const dx = b[1][0] - b[0][0];
+    const dy = b[1][1] - b[0][1];
+    const scale = 0.95 / Math.max(dx / width, dy / height);
+    const cx = (b[0][0] + b[1][0]) / 2;
+    const cy = (b[0][1] + b[1][1]) / 2;
+
+    // Re-project with the new scale/translate by reusing the geographic center
+    const geoC = d3.geoCentroid(fc);                       // [lon, lat]
+    projection
+      .center(geoC)
+      .scale(150 * scale * 100)                            // 150 is Mercator’s default; *100 gives a good base
+      .translate([width/2, height/2]);
+
+    // Recompute path after final projection (important!)
+    const path2 = d3.geoPath().projection(projection);
 
     const sel = svg.selectAll("path.state")
-      .data(features)
+      .data(fc.features)
       .enter()
       .append("path")
       .attr("class","state")
-      .attr("d", path)
-      .attr("id", d=> String(d.properties[nameProp]).trim())
+      .attr("id", d => String(d.properties[nameProp]).trim())
+      .attr("d", path2)
       .style("fill", "#ccc")
       .style("stroke", "#333")
       .style("stroke-width", "1px")
-      .style("vector-effect","non-scaling-stroke");
+      .style("vector-effect", "non-scaling-stroke");
 
     console.log("[Draw] paths rendered:", sel.size());
     onReady && onReady();
-  }catch(err){
+  } catch (err) {
     console.error("Geo load error:", err);
     const msg = document.createElement("div");
     msg.style.color = "crimson";
@@ -250,6 +275,7 @@ async function drawSubdivisionMap(svgSelector, onReady){
     onReady && onReady();
   }
 }
+
 
 function paintMapsFromTable(){
   const rows=document.querySelectorAll("#subdivision-table-body tr");
