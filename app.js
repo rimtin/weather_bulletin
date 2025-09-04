@@ -200,70 +200,78 @@ async function drawSubdivisionMap(svgSelector, onReady){
   const svg = d3.select(svgSelector);
   svg.selectAll("*").remove();
 
-  // Explicit drawing area
   const width = 860, height = 280;
   svg.attr("width", width).attr("height", height)
      .attr("viewBox", `0 0 ${width} ${height}`)
      .attr("preserveAspectRatio", "xMidYMid meet")
      .style("background","transparent");
 
-  // pattern for "No Forecast Available"
-  const defs=svg.append("defs");
+  // hatch for "No Forecast Available"
+  const defs = svg.append("defs");
   defs.append("pattern")
-    .attr("id","diagonalHatch")
-    .attr("patternUnits","userSpaceOnUse")
-    .attr("width",6).attr("height",6)
-    .append("path").attr("d","M0,0 l6,6").attr("stroke","#999").attr("stroke-width",1);
+      .attr("id","diagonalHatch")
+      .attr("patternUnits","userSpaceOnUse")
+      .attr("width",6).attr("height",6)
+      .append("path").attr("d","M0,0 l6,6").attr("stroke","#999").attr("stroke-width",1);
 
   try {
     const raw = await loadGeoJSON(SUBDIV_GEO_URLS);
-    const {features,nameProp} = normalizeToFeatures(raw);
+    const {features, nameProp} = normalizeToFeatures(raw);
 
-    // ---- Filter OUTLIERS so the fit isn't ruined by far-away coords ----
-    // Keep only features whose bounds sit roughly over India.
-    const inIndia = f => {
-      const b = d3.geoBounds(f);           // [ [minLon,minLat], [maxLon,maxLat] ]
-      const minLon=b[0][0], minLat=b[0][1], maxLon=b[1][0], maxLat=b[1][1];
-      return (minLon > 60 && maxLon < 100 && minLat > 5 && maxLat < 40);
-    };
-    const clean = features.filter(inIndia);
-    const fc = { type: "FeatureCollection", features: clean.length ? clean : features };
+    // --- Safer filter: keep features whose CENTROID is in India’s box ---
+    const inBox = (lon, lat) => lon > 60 && lon < 100 && lat > 5 && lat < 35;
+    const filtered = features.filter(f => {
+      const c = d3.geoCentroid(f);   // [lon, lat]
+      return inBox(c[0], c[1]);
+    });
 
-    // ---- Robust "fit" that always fills the svg ----
+    // If we filtered too much (e.g., < 500 districts), fall back to all
+    const usable = (filtered.length >= 500) ? filtered : features;
+    const fc = { type: "FeatureCollection", features: usable };
+
+    // --- Preferred: fit to usable features ---
     const projection = d3.geoMercator();
     const path = d3.geoPath().projection(projection);
+    projection.fitSize([width, height], fc);
 
-    // Compute bounds then set scale/translate manually (instead of fitSize)
-    const b = path.bounds(fc);                             // [[x0,y0],[x1,y1]] in pixels at current (default) proj
-    const dx = b[1][0] - b[0][0];
-    const dy = b[1][1] - b[0][1];
-    const scale = 0.95 / Math.max(dx / width, dy / height);
-    const cx = (b[0][0] + b[1][0]) / 2;
-    const cy = (b[0][1] + b[1][1]) / 2;
-
-    // Re-project with the new scale/translate by reusing the geographic center
-    const geoC = d3.geoCentroid(fc);                       // [lon, lat]
-    projection
-      .center(geoC)
-      .scale(150 * scale * 100)                            // 150 is Mercator’s default; *100 gives a good base
-      .translate([width/2, height/2]);
-
-    // Recompute path after final projection (important!)
-    const path2 = d3.geoPath().projection(projection);
-
-    const sel = svg.selectAll("path.state")
+    let paths = svg.selectAll("path.state")
       .data(fc.features)
       .enter()
       .append("path")
       .attr("class","state")
       .attr("id", d => String(d.properties[nameProp]).trim())
-      .attr("d", path2)
+      .attr("d", path)
       .style("fill", "#ccc")
       .style("stroke", "#333")
       .style("stroke-width", "1px")
-      .style("vector-effect", "non-scaling-stroke");
+      .style("vector-effect","non-scaling-stroke");
 
-    console.log("[Draw] paths rendered:", sel.size());
+    // --- Last-resort fallback: if the map still looks tiny, force center/scale ---
+    // Heuristic: if the projected width of all paths is very small, re-project.
+    const bbox = (() => {
+      let x0=Infinity, y0=Infinity, x1=-Infinity, y1=-Infinity;
+      svg.selectAll("path.state").each(function(){
+        const b = this.getBBox();
+        x0 = Math.min(x0, b.x);
+        y0 = Math.min(y0, b.y);
+        x1 = Math.max(x1, b.x + b.width);
+        y1 = Math.max(y1, b.y + b.height);
+      });
+      return { w: x1 - x0, h: y1 - y0 };
+    })();
+
+    if (bbox.w < width * 0.3 || bbox.h < height * 0.3) {
+      // Force a sensible view over mainland India
+      const forced = d3.geoMercator()
+        .center([82.5, 22.0])     // roughly center of India
+        .scale(1100)              // good starting scale for 860x280
+        .translate([width/2, height/2]);
+
+      const pathForced = d3.geoPath().projection(forced);
+      svg.selectAll("path.state").attr("d", pathForced);
+    }
+
+    console.log("[Draw] paths rendered:", paths.size());
     onReady && onReady();
   } catch (err) {
     console.error("Geo load error:", err);
