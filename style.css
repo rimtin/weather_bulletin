@@ -39,13 +39,30 @@ select { width: 100%; padding: 4px; font-size: 12px; }
 
 /* Map */
 .map-label { text-align: center; font-weight: bold; font-size: 14px; margin: 10px 0; }
+
+/* Keep wrapper transparent and simple */
 .map-wrapper {
   margin: 10px auto;
   max-width: 720px;
   position: relative;
   page-break-inside: avoid;
-  background: transparent !important;       /* keep the wrapper transparent */
+  background: transparent !important;
 }
+.map-wrapper::before,
+.map-wrapper::after { display: none !important; }
+
+/* Style ONLY the map SVGs (do not use a global `svg {}` rule) */
+.map-wrapper svg {
+  width: 100%;
+  height: 280px;               /* adjust height if you want */
+  display: block;
+  border: 1px solid #ccc;
+  margin: auto;
+  background: transparent !important;
+  position: relative;
+  z-index: 2;
+}
+
 .map-legend {
   position: absolute; top: 12px; right: 12px;
   background: #fff; border: 1px solid #ccc; padding: 8px 12px;
@@ -57,19 +74,7 @@ select { width: 100%; padding: 4px; font-size: 12px; }
 .legend-swatch { width: 18px; height: 18px; border: 1.4px solid #222; margin-right: 6px; display: inline-block; border-radius: 3px; }
 .map-legend .legend-pattern { display:inline-block; width:18px; height:18px; margin-right:6px; border:1.4px solid #222; border-radius:3px; background-image: repeating-linear-gradient(45deg, #999 0, #999 1px, transparent 1px, transparent 4px); }
 
-/* IMPORTANT: only style the map SVGs, not every SVG on the page */
-.map-wrapper svg {
-  width: 100%;
-  height: 260px;                     /* adjust if you want taller maps */
-  display: block;
-  border: 1px solid #ccc;
-  margin: auto;
-  background: transparent !important; /* DO NOT set any blue background here */
-  position: relative;
-  z-index: 2;
-}
-
-/* Excel palette swatches — bright (for legend only) */
+/* Excel palette swatches — bright (legend only) */
 .swatch-clear    { background:#9ED1E6 !important; color:#063647; font-weight:600; }
 .swatch-low      { background:#B9DB6E !important; color:#2C4400; font-weight:600; }
 .swatch-medium   { background:#FFE93A !important; color:#4A3D00; font-weight:700; }
@@ -93,8 +98,7 @@ select { width: 100%; padding: 4px; font-size: 12px; }
 button { display: block; margin: 30px auto 10px; padding: 10px 20px; font-size: 14px; background: #007bff; border: none; color: #fff; border-radius: 6px; cursor: pointer; }
 button:hover { background: #0056b3; }
 
-/* --- Map visibility hardening (safety overrides) --- */
-.map-wrapper::before, .map-wrapper::after { display: none !important; }
+/* Safety: ensure paths are visible regardless of other CSS */
 #indiaSubMapDay1 path.state, #indiaSubMapDay2 path.state {
   fill: #ccc !important;
   stroke: #333 !important;
