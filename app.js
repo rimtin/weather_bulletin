@@ -270,15 +270,10 @@ async function drawSubdivisionMap(svgId, onReady){
 }
 
 function paintMapsFromTable(){
-  // Reset fills to light grey before recoloring
-  d3.selectAll("#indiaSubMapDay1 .state-piece").style("fill","#eee");
-  d3.selectAll("#indiaSubMapDay2 .state-piece").style("fill","#eee");
-
   const rows=document.querySelectorAll("#subdivision-table-body tr");
   rows.forEach(row=>{
-    const tableLabel = row.getAttribute("data-subdiv");        // e.g., "W-Raj"
-    const mapKey     = TableToMapKey[tableLabel] || tableLabel; // e.g., "Rajasthan"
-
+    const label=row.getAttribute("data-subdiv");
+    const geo=TableToGeoName[label]||label;
     const d1=row.querySelector("select.day1")?.value;
     const d2=row.querySelector("select.day2")?.value;
 
@@ -288,11 +283,18 @@ function paintMapsFromTable(){
     const fill1 = (c1 === "pattern") ? "url(#diagonalHatch)" : (c1 || "#ccc");
     const fill2 = (c2 === "pattern") ? "url(#diagonalHatch)" : (c2 || "#ccc");
 
-    // Color ALL district pieces whose state matches the key
-    d3.selectAll(`#indiaSubMapDay1 .state-piece[data-st='${cssEscape(mapKey)}']`).style("fill", fill1);
-    d3.selectAll(`#indiaSubMapDay2 .state-piece[data-st='${cssEscape(mapKey)}']`).style("fill", fill2);
+    d3.selectAll(`#indiaSubMapDay1 [id='${cssEscape(geo)}']`)
+      .style("fill", fill1, "important")
+      .style("stroke", "#333", "important")
+      .style("stroke-width", "1px", "important");
+
+    d3.selectAll(`#indiaSubMapDay2 [id='${cssEscape(geo)}']`)
+      .style("fill", fill2, "important")
+      .style("stroke", "#333", "important")
+      .style("stroke-width", "1px", "important");
   });
 }
+
 
 /***********************
  * INIT
