@@ -191,6 +191,14 @@ function paintMapsFromTable(){
 
     d3.selectAll(sel1).attr("fill", c1);
     d3.selectAll(sel2).attr("fill", c2);
+
+    const sel1 = `#indiaSubMapDay1 path.state[data-name='${cssEscape(target)}'],
+              #indiaSubMapDay1 path.state[data-norm='${cssEscape(norm(target))}']`;
+const s1 = d3.selectAll(sel1);
+if (s1.size() === 0) {
+  console.warn('No match for table label:', label, '→', target, 'norm:', norm(target));
+}
+
   });
 }
 
