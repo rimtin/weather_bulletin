@@ -1,6 +1,5 @@
-// Put this FIRST so it's the default in the selects
+// ---- COLORS + OPTIONS (global) ----
 window.forecastColors = {
-  "No Forecast Available": "pattern",   // special token handled in app.js
   "Clear Sky": "#A7D8EB",
   "Low Cloud Cover": "#C4E17F",
   "Medium Cloud Cover": "#FFF952",
@@ -9,29 +8,30 @@ window.forecastColors = {
 };
 window.forecastOptions = Object.keys(window.forecastColors);
 
-
 // ---- SUBDIVISION ROWS (global) ----
-// Keep labels exactly as your table wants (State & Sub Division columns)
+// Keep labels exactly as you want in the table (column “Sub Division”).
 window.subdivisions = [
   // Punjab
   { state: "Punjab",            name: "Punjab" },
 
   // Rajasthan
-  { state: "Rajasthan",         name: "West-Rajasthan" },
-  { state: "Rajasthan",         name: "East-Rajasthan" },
+  { state: "Rajasthan",         name: "W-Raj" },
+  { state: "Rajasthan",         name: "E-Raj" },
 
   // Gujarat
-  { state: "Gujarat",           name: "West-Gujarat (Saurashtra & Kachh)" },
-  { state: "Gujarat",           name: "East-Gujarat Region" },
+  { state: "Gujarat",           name: "W-Gujarat (Saurashtra & Kachh)" },
+  { state: "Gujarat",           name: "E-Gujarat Region" },
 
   // Uttar Pradesh
-  { state: "Uttar Pradesh",     name: "West-UP" },
-  { state: "Uttar Pradesh",     name: "East-UP" },
+  { state: "Uttar Pradesh",     name: "W-UP" },
+  { state: "Uttar Pradesh",     name: "E-UP" },
 
+  // Bihar
+  { state: "Bihar",             name: "Bihar" },
 
   // Madhya Pradesh
-  { state: "Madhya Pradesh",    name: "West-MP" },
-  { state: "Madhya Pradesh",    name: "East-MP" },
+  { state: "Madhya Pradesh",    name: "W-MP" },
+  { state: "Madhya Pradesh",    name: "E-MP" },
 
   // Chhattisgarh
   { state: "Chhattisgarh",      name: "Chhattisgarh" },
@@ -45,8 +45,8 @@ window.subdivisions = [
   { state: "Telangana",         name: "Telangana" },
 
   // Andhra Pradesh
-  { state: "Andhra Pradesh",    name: "Andhra Pradesh" },
-  { state: "Andhra Pradesh",    name: "SW-AP (Rayalaseema)" },
+  { state: "Andhra Pradesh",    name: "Andhra Pradesh" },        // Coastal AP
+  { state: "Andhra Pradesh",    name: "SW-AP (Rayalaseema)" },   // Rayalaseema
 
   // Karnataka
   { state: "Karnataka",         name: "North-Karnataka" },
@@ -56,7 +56,7 @@ window.subdivisions = [
   { state: "Tamil Nadu",        name: "Tamil Nadu" }
 ];
 
-// ---- Date in header ----
+// ---- Date header ----
 function updateISTDate() {
   const istOffsetMin = 330;
   const nowUtc = new Date();
