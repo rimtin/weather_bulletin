@@ -20,7 +20,7 @@ const TableToGeoName = {
   "North-Karnataka": "N.I. Karnataka",
   "South- Karnataka": "S.I. Karnataka",
 
-  // split states
+  // splits
   "W-Raj": "West Rajasthan",
   "E-Raj": "East Rajasthan",
 
@@ -41,7 +41,7 @@ const TableToGeoName = {
 /***********************
  * GLOBALS from data.js
  ***********************/
-// uses window.subdivisions, window.forecastOptions, window.forecastColors, updateISTDate
+// window.subdivisions, window.forecastOptions, window.forecastColors, updateISTDate
 
 /***********************
  * HELPERS
@@ -71,10 +71,8 @@ async function loadGeoJSON(urls){
  * BUILD TABLE
  ***********************/
 function buildSubdivisionTable(){
-  const table = document.getElementById("subdivision-table");
   const tbody  = document.getElementById("subdivision-table-body");
-  if(!table || !tbody) return;
-
+  if(!tbody) return;
   tbody.innerHTML = "";
 
   // group rows by state for a nice rowspan
@@ -122,23 +120,24 @@ function buildSubdivisionTable(){
 }
 
 /***********************
- * DRAW MAPS
+ * DRAW MAPS  (now using fitExtent)
  ***********************/
 async function drawSubdivisionMap(svgSelector, onReady){
   const svg = d3.select(svgSelector);
   svg.selectAll("*").remove();
 
-  // fixed viewBox so India fits regardless of CSS size
-  svg.attr("viewBox","0 0 860 580").attr("preserveAspectRatio","xMidYMid meet");
-
-  // projection roughly centered on India
-  const proj = d3.geoMercator().scale(850).center([83.5,22.5]).translate([430,290]);
-  const path = d3.geoPath().projection(proj);
+  const W = 860, H = 580;
+  svg.attr("viewBox", `0 0 ${W} ${H}`).attr("preserveAspectRatio","xMidYMid meet");
 
   try {
     const geo = await loadGeoJSON(SUBDIV_GEO_URLS);
     const features = geo.features || [];
+    const collection = { type: "FeatureCollection", features };
     const nameProp = "ST_NM"; // your file uses ST_NM for sub-division name
+
+    // 🔑 Fit the map to the SVG (with a tiny padding)
+    const proj = d3.geoMercator().fitExtent([[5,5],[W-5,H-5]], collection);
+    const path = d3.geoPath().projection(proj);
 
     svg.selectAll("path.state")
       .data(features)
@@ -197,8 +196,7 @@ window.onload = () => {
 
   drawSubdivisionMap("#indiaSubMapDay1", () => {
     drawSubdivisionMap("#indiaSubMapDay2", () => {
-      // initial paint (whatever the selects default to)
-      paintMapsFromTable();
+      paintMapsFromTable(); // initial paint
     });
   });
 };
