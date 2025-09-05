@@ -9,8 +9,7 @@ window.forecastColors = {
 window.forecastOptions = Object.keys(window.forecastColors);
 
 // ---- SUBDIVISION ROWS (global) ----
-// IMPORTANT: Keep names exactly as in your GeoJSON ST_NM (the normalizer
-// will accept small variants like Kutch/Kachchh, N.I./North Interior).
+// IMPORTANT: Keep names EXACTLY as in your GeoJSON ST_NM (case & spelling).
 window.subdivisions = [
   // Punjab
   { state: "Punjab",            name: "Punjab" },
@@ -20,8 +19,8 @@ window.subdivisions = [
   { state: "Rajasthan",         name: "East Rajasthan" },
 
   // Gujarat
-  { state: "Gujarat",           name: "Saurashtra & Kachchh" }, // will also match “Kutch/Kachh”
-  { state: "Gujarat",           name: "Gujarat Region" },
+  { state: "Gujarat",           name: "Saurashtra & Kachh" },     // fixed from "Kachchh"
+  { state: "Gujarat",           name: "Gujarat region" },         // fixed case
 
   // Uttar Pradesh
   { state: "Uttar Pradesh",     name: "West Uttar Pradesh" },
@@ -50,19 +49,21 @@ window.subdivisions = [
   { state: "Andhra Pradesh",    name: "Rayalaseema" },
 
   // Karnataka
-  { state: "Karnataka",         name: "North Interior Karnataka" }, // also matches N.I. Karnataka
-  { state: "Karnataka",         name: "South Interior Karnataka" }, // also matches S.I. Karnataka
+  { state: "Karnataka",         name: "N.I. Karnataka" },         // fixed from "North Interior Karnataka"
+  { state: "Karnataka",         name: "S.I. Karnataka" },         // fixed from "South Interior Karnataka"
 
   // Tamil Nadu
   { state: "Tamil Nadu",        name: "Tamil Nadu & Puducherry" }
 ];
 
-// ---- Date header ----
+// ---- Date header (IST) ----
 function updateISTDate() {
-  const istOffsetMin = 330;
-  const nowUtc = new Date();
-  const ist = new Date(nowUtc.getTime() + istOffsetMin * 60000);
-  const formatted = ist.toLocaleDateString("en-IN", { day: "2-digit", month: "long", year: "numeric" });
+  const formatted = new Date().toLocaleDateString("en-IN", {
+    day: "2-digit",
+    month: "long",
+    year: "numeric",
+    timeZone: "Asia/Kolkata"
+  });
   const el = document.getElementById("forecast-date");
   if (el) el.textContent = formatted;
 }
