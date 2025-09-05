@@ -1,18 +1,59 @@
 /***********************
  * CONFIG
  ***********************/
+// Where to fetch the sub-division GeoJSON (your file first, then 2 fallbacks)
 const SUBDIV_GEO_URLS = [
   "assets/indian_met_zones.geojson",
   "https://raw.githubusercontent.com/rimtin/weather_bulletin/main/assets/indian_met_zones.geojson",
   "https://cdn.jsdelivr.net/gh/rimtin/weather_bulletin@main/assets/indian_met_zones.geojson"
 ];
 
+// Table label → actual ST_NM in your GeoJSON
+const TableToGeoName = {
+  // 1: identical names
+  "Punjab": "Punjab",
+  "Telangana": "Telangana",
+  "Chhattisgarh": "Chhattisgarh",
+
+  // 2: states with sub-divisions
+  // Rajasthan
+  "W-Raj": "West Rajasthan",
+  "E-Raj": "East Rajasthan",
+
+  // Gujarat
+  "W-Gujarat (Saurashtra & Kachh)": "Saurashtra & Kachh",
+  "E-Gujarat Region": "Gujarat region",
+
+  // Uttar Pradesh
+  "W-UP": "West Uttar Pradesh",
+  "E-UP": "East Uttar Pradesh",
+
+  // Madhya Pradesh
+  "W-MP": "West Madhya Pradesh",
+  "E-MP": "East Madhya Pradesh",
+
+  // Maharashtra
+  "Madhya -MH": "Madhya Maharashtra",
+  "Marathwada": "Marathwada",
+  "Vidarbha": "Vidarbha",
+
+  // Andhra Pradesh
+  "Andhra Pradesh": "Coastal Andhra Pradesh",
+  "SW-AP (Rayalaseema)": "Rayalaseema",
+
+  // Karnataka
+  "North-Karnataka": "N.I. Karnataka",
+  "South- Karnataka": "S.I. Karnataka",
+
+  // Tamil Nadu (your ST_NM includes Puducherry)
+  "Tamil Nadu": "Tamil Nadu & Puducherry"
+};
+
 /***********************
  * UTIL
  ***********************/
-function cssAttrEscape(s){ return String(s).replace(/'/g, "\\'"); }
-
-// small tolerant matcher (handles Kutch/Kachchh, N.I./North Interior, S.I./South Interior, &/and)
+function cssAttrEscape(s){ return String(s).replace(/'/g,"\\'"); }
+function tableLabelToGeo(label){ return TableToGeoName[label] || label; }
 function normName(s){
   return String(s||"")
     .toLowerCase()
@@ -28,14 +69,11 @@ async function loadGeoJSON(urls){
   let last;
   for(const url of urls){
     try{
-      const u = url + (url.startsWith("http") ? ("?v=" + Date.now()) : "");
+      const u = url + (url.startsWith("http") ? `?v=${Date.now()}` : "");
       const data = await d3.json(u);
-      console.log("[GeoJSON] loaded:", url, "features:", (data.features||[]).length);
+      console.log("[GeoJSON] loaded:", url, "features:", data?.features?.length ?? 0);
       return data;
-    }catch(e){
-      console.warn("[GeoJSON] failed:", url, e);
-      last = e;
-    }
+    }catch(e){ console.warn("[GeoJSON] failed:", url, e); last = e; }
   }
   throw last || new Error("All GeoJSON URLs failed");
 }
@@ -68,6 +106,7 @@ function ensureTable(){
   }
   return table;
 }
+
 function ensureMaps(){
   const page2 = document.querySelector(".page-2") || (()=> {
     const p=document.createElement("div");
@@ -113,7 +152,7 @@ function ensureMaps(){
 }
 
 /***********************
- * TABLE (uses names exactly as in data.js)
+ * TABLE
  ***********************/
 function buildSubdivisionTable(){
   ensureTable();
@@ -121,16 +160,14 @@ function buildSubdivisionTable(){
   tbody.innerHTML = "";
 
   const groups = {};
-  (window.subdivisions||[]).forEach(r=>{
-    (groups[r.state] ||= []).push(r);
-  });
+  (window.subdivisions||[]).forEach(r => (groups[r.state] ||= []).push(r));
 
   let i=1;
   Object.keys(groups).forEach(state=>{
     const rows = groups[state];
     rows.forEach((row, idx)=>{
       const tr = document.createElement("tr");
-      tr.dataset.state = state;
+      tr.dataset.state  = state;
       tr.dataset.subdiv = row.name;
 
       tr.innerHTML = `
@@ -145,9 +182,11 @@ function buildSubdivisionTable(){
     });
   });
 
+  // interactions
   tbody.querySelectorAll("select").forEach(s=>s.addEventListener("change", paintMapsFromTable));
   tbody.querySelectorAll("tr").forEach(tr=>{
-    const targetNorm = normName(tr.dataset.subdiv);
+    const mapped = tableLabelToGeo(tr.dataset.subdiv);
+    const targetNorm = normName(mapped);
     tr.addEventListener("mouseenter", ()=>{
       d3.selectAll(`#indiaSubMapDay1 [data-norm='${cssAttrEscape(targetNorm)}'], #indiaSubMapDay2 [data-norm='${cssAttrEscape(targetNorm)}']`).attr("stroke-width", 2.5);
     });
@@ -160,13 +199,10 @@ function buildSubdivisionTable(){
 /***********************
  * MAPS
  ***********************/
-let knownNames = new Set();
-
 async function drawSubdivisionMap(svgId, onReady){
   const svg = d3.select(svgId);
   svg.selectAll("*").remove();
 
-  // SVG canvas
   const W = 860, H = 580;
   svg.attr("viewBox",`0 0 ${W} ${H}`).attr("preserveAspectRatio","xMidYMid meet");
 
@@ -175,14 +211,11 @@ async function drawSubdivisionMap(svgId, onReady){
     const features = Array.isArray(raw?.features) ? raw.features : [];
     if(!features.length) throw new Error("No features in GeoJSON");
 
-    // 🔒 Use ST_NM as the label field and auto-fit to your data
-    const nameProp = "ST_NM";
+    const nameProp = "ST_NM";                           // 🔒 sub-division name field
     const fc = { type:"FeatureCollection", features };
 
     const projection = d3.geoMercator().fitSize([W,H], fc);
     const path = d3.geoPath().projection(projection);
-
-    knownNames = new Set();
 
     svg.selectAll("path.state")
       .data(features)
@@ -190,24 +223,20 @@ async function drawSubdivisionMap(svgId, onReady){
       .append("path")
       .attr("class","state")
       .attr("d",path)
-      .attr("data-name", d=> String(d.properties?.[nameProp] ?? "").trim())
-      .attr("data-norm", d=>{
-        const n = normName(d.properties?.[nameProp]);
-        knownNames.add(n);
-        return n;
-      })
-      .attr("fill","#ccc")
-      .attr("stroke","#333")
-      .attr("stroke-width",1)
+      .attr("data-name", d => String(d.properties?.[nameProp] ?? "").trim())
+      .attr("data-norm", d => normName(d.properties?.[nameProp]))
+      .attr("fill","#e6e6e6")
+      .attr("stroke","#222")
+      .attr("stroke-width",0.8)
       .on("mouseover", function(){ d3.select(this).attr("stroke-width",2.5); })
-      .on("mouseout",  function(){ d3.select(this).attr("stroke-width",1); });
+      .on("mouseout",  function(){ d3.select(this).attr("stroke-width",0.8); });
 
     onReady && onReady();
   }catch(err){
     console.error("Geo load/draw error:", err);
     const msg = document.createElement("div");
     msg.style.cssText = "color:#b00020;margin:8px 0;font-weight:600";
-    msg.textContent = "⚠️ Could not draw the sub-division map. Check that assets/indian_met_zones.geojson exists and has an ST_NM field.";
+    msg.textContent = "⚠️ Could not draw the sub-division map. Check assets/indian_met_zones.geojson and its ST_NM field.";
     svg.node().parentNode.appendChild(msg);
     onReady && onReady();
   }
@@ -216,17 +245,19 @@ async function drawSubdivisionMap(svgId, onReady){
 function paintMapsFromTable(){
   const rows = document.querySelectorAll("#subdivision-table-body tr");
   rows.forEach(row=>{
-    const targetNorm = normName(row.dataset.subdiv);
+    const mappedName = tableLabelToGeo(row.dataset.subdiv);
+    const targetNorm = normName(mappedName);
+
     const d1 = row.querySelector("select.day1")?.value;
     const d2 = row.querySelector("select.day2")?.value;
-    const c1 = (window.forecastColors||{})[d1] || "#ccc";
-    const c2 = (window.forecastColors||{})[d2] || "#ccc";
+    const c1 = (window.forecastColors||{})[d1] || "#e6e6e6";
+    const c2 = (window.forecastColors||{})[d2] || "#e6e6e6";
 
     const sel1 = d3.selectAll(`#indiaSubMapDay1 [data-norm='${cssAttrEscape(targetNorm)}']`);
     const sel2 = d3.selectAll(`#indiaSubMapDay2 [data-norm='${cssAttrEscape(targetNorm)}']`);
 
     if(sel1.size()===0 && sel2.size()===0){
-      console.warn("No match for table label:", row.dataset.subdiv, "(norm:", targetNorm, ")");
+      console.warn("No Geo match for table label:", row.dataset.subdiv, "→ tried:", mappedName);
     }
 
     sel1.attr("fill", c1);
@@ -239,6 +270,7 @@ function paintMapsFromTable(){
  ***********************/
 window.onload = ()=>{
   if(typeof updateISTDate==="function") updateISTDate();
+
   ensureTable();
   ensureMaps();
   buildSubdivisionTable();
