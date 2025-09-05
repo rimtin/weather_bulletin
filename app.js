@@ -7,64 +7,51 @@ const SUBDIV_GEO_URLS = [
   "https://cdn.jsdelivr.net/gh/rimtin/weather_bulletin@main/assets/indian_met_zones.geojson"
 ];
 
-// Table label → GeoJSON ST_NM (IMD subdivision names)
-const TableToGeoName = {
-  // exact equals
-  "Punjab": "Punjab",
-  "Telangana": "Telangana",
-  "Tamil Nadu": "Tamil Nadu & Puducherry",
-  "Chhattisgarh": "Chhattisgarh",
-
-  // compound
-  "W-Raj": "West Rajasthan",
-  "E-Raj": "East Rajasthan",
-
-  "W-Gujarat (Saurashtra & Kachh)": "Saurashtra & Kachh",
-  "E-Gujarat Region": "Gujarat region",
-
-  "W-UP": "West Uttar Pradesh",
-  "E-UP": "East Uttar Pradesh",
-
-  "W-MP": "West Madhya Pradesh",
-  "E-MP": "East Madhya Pradesh",
-
-  "Madhya -MH": "Madhya Maharashtra",
-  "Marathwada": "Marathwada",
-  "Vidarbha": "Vidarbha",
-
-  "Andhra Pradesh": "Coastal Andhra Pradesh",
-  "SW-AP (Rayalaseema)": "Rayalaseema",
-
-  "North-Karnataka": "N.I. Karnataka",
-  "South- Karnataka": "S.I. Karnataka"
-};
+// optional aliases if you ever need them; we mostly rely on canonical()
+const TableToGeoName = {};
 
 /***********************
- * GLOBALS from data.js
+ * GLOBALS (from data.js)
+ * - window.subdivisions
+ * - window.forecastOptions
+ * - window.forecastColors
+ * - updateISTDate()
  ***********************/
-// window.subdivisions, window.forecastOptions, window.forecastColors, updateISTDate
 
 /***********************
  * HELPERS
  ***********************/
 const cssEscape = s => String(s).replace(/'/g, "\\'");
-const norm = s => String(s || "")
-  .toLowerCase()
-  .replace(/&/g, "and")
-  .replace(/[^\w]+/g, "-")
-  .replace(/^-+|-+$/g, "");
 
-// robust loader with fallbacks
-async function loadGeoJSON(urls){
+/** Turn a name into a stable key so small spelling/style changes still match */
+function canonical(input) {
+  let s = String(input || "")
+    .toLowerCase()
+    .replace(/\./g, "")      // remove dots (N.I. -> NI)
+    .replace(/&/g, "and")    // unify ampersand
+    .replace(/\s+/g, " ")    // collapse whitespace
+    .trim();
+
+  // common IMD variants
+  s = s.replace(/north *interior *karnataka|n *i *karnataka/, "ni karnataka");
+  s = s.replace(/south *interior *karnataka|s *i *karnataka/, "si karnataka");
+  s = s.replace(/saurashtra *and *(kutch|kachchh|kachh)/, "saurashtra and kachchh");
+  s = s.replace(/gujarat *region/, "gujarat region");
+  s = s.replace(/tamil *nadu *and *puducherry/, "tamil nadu and puducherry");
+
+  return s.replace(/[^\w]+/g, "-"); // → "saurashtra-and-kachchh", "ni-karnataka", ...
+}
+
+async function loadGeoJSON(urls) {
   let last;
-  for (const u of urls){
-    try{
+  for (const u of urls) {
+    try {
       const r = await fetch(u + (u.startsWith("http") ? `?v=${Date.now()}` : ""));
-      if(!r.ok) throw new Error(`${r.status} ${r.statusText}`);
+      if (!r.ok) throw new Error(`${r.status} ${r.statusText}`);
       const j = await r.json();
-      console.log("[GeoJSON] loaded:", u, "features:", (j.features||[]).length);
+      console.log("[GeoJSON] loaded:", u, "features:", (j.features || []).length);
       return j;
-    }catch(e){
+    } catch (e) {
       console.warn("[GeoJSON] failed:", u, e);
       last = e;
     }
@@ -73,14 +60,14 @@ async function loadGeoJSON(urls){
 }
 
 /***********************
- * TABLE (rowspans + selects)
+ * TABLE
  ***********************/
-function buildSubdivisionTable(){
-  const tbody  = document.getElementById("subdivision-table-body");
-  if(!tbody) return;
+function buildSubdivisionTable() {
+  const tbody = document.getElementById("subdivision-table-body");
+  if (!tbody) return;
   tbody.innerHTML = "";
 
-  // group by state for nicer layout
+  // group by state for rowspans
   const groups = {};
   (window.subdivisions || []).forEach(r => {
     (groups[r.state] ||= []).push(r);
@@ -91,89 +78,76 @@ function buildSubdivisionTable(){
     const rows = groups[state];
     rows.forEach((row, i) => {
       const tr = document.createElement("tr");
-      tr.dataset.state  = state;
-      tr.dataset.subdiv = row.name;  // table label
+      tr.dataset.state = state;
+      tr.dataset.subdiv = row.name;
+      tr.dataset.norm = canonical(TableToGeoName[row.name] || row.name);
 
       tr.innerHTML = `
         <td>${serial++}</td>
-        ${i===0 ? `<td rowspan="${rows.length}">${state}</td>` : ""}
+        ${i === 0 ? `<td rowspan="${rows.length}">${state}</td>` : ""}
         <td>${row.name}</td>
         <td contenteditable="true"></td>
-        <td><select class="day1">${(window.forecastOptions||[]).map(o=>`<option>${o}</option>`).join("")}</select></td>
-        <td><select class="day2">${(window.forecastOptions||[]).map(o=>`<option>${o}</option>`).join("")}</select></td>
+        <td><select class="day1">${(window.forecastOptions || []).map(o => `<option>${o}</option>`).join("")}</select></td>
+        <td><select class="day2">${(window.forecastOptions || []).map(o => `<option>${o}</option>`).join("")}</select></td>
       `;
       tbody.appendChild(tr);
     });
   });
 
-  // repaint when a select changes
-  tbody.querySelectorAll("select").forEach(sel => {
-    sel.addEventListener("change", paintMapsFromTable);
-  });
+  // interactions
+  tbody.querySelectorAll("select").forEach(sel =>
+    sel.addEventListener("change", paintMapsFromTable)
+  );
 
-  // row hover → bold outline on the map
+  // hover highlight on the maps
   tbody.querySelectorAll("tr").forEach(tr => {
-    const label  = tr.dataset.subdiv;
-    const geo    = TableToGeoName[label] || label;
+    const id = tr.dataset.norm;
     tr.addEventListener("mouseenter", () => {
       d3.selectAll(
-        `#indiaSubMapDay1 path.state[data-name='${cssEscape(geo)}'],` +
-        `#indiaSubMapDay2 path.state[data-name='${cssEscape(geo)}']`
+        `#indiaSubMapDay1 [data-norm='${cssEscape(id)}'], #indiaSubMapDay2 [data-norm='${cssEscape(id)}']`
       ).attr("stroke-width", 1.6);
     });
     tr.addEventListener("mouseleave", () => {
       d3.selectAll(
-        `#indiaSubMapDay1 path.state[data-name='${cssEscape(geo)}'],` +
-        `#indiaSubMapDay2 path.state[data-name='${cssEscape(geo)}']`
+        `#indiaSubMapDay1 [data-norm='${cssEscape(id)}'], #indiaSubMapDay2 [data-norm='${cssEscape(id)}']`
       ).attr("stroke-width", 0.8);
     });
   });
 }
 
 /***********************
- * DRAW MAP (fit to SVG)
+ * MAPS
  ***********************/
-async function drawSubdivisionMap(svgSelector, onReady){
+async function drawSubdivisionMap(svgSelector, onReady) {
   const svg = d3.select(svgSelector);
-  svg.selectAll("*").remove(); // clean redraw
+  svg.selectAll("*").remove();
 
   const W = 860, H = 580;
-  svg.attr("viewBox", `0 0 ${W} ${H}`)
-     .attr("preserveAspectRatio","xMidYMid meet");
+  svg.attr("viewBox", `0 0 ${W} ${H}`).attr("preserveAspectRatio", "xMidYMid meet");
 
   try {
     const geo = await loadGeoJSON(SUBDIV_GEO_URLS);
     const features = geo.features || [];
     const fc = { type: "FeatureCollection", features };
+    const NAME = "ST_NM"; // IMD sub-division field
 
-    // your file uses ST_NM as sub-division name
-    const NAME = "ST_NM";
-
-    // projection + fit to size
     const projection = d3.geoMercator();
-    const path = d3.geoPath(projection);
-    projection.fitSize([W - 8, H - 8], fc);
+    const path = d3.geoPath().projection(projection);
+    projection.fitSize([W - 10, H - 10], fc);
 
-    // draw polygons
-    svg.append("g")
-      .attr("class","subdivisions")
-      .selectAll("path.state")
+    svg.selectAll("path.state")
       .data(features)
       .enter()
       .append("path")
-      .attr("class","state")
+      .attr("class", "state")
       .attr("d", path)
-      .attr("data-name", d => (d.properties?.[NAME] ?? "").trim())
-      .attr("data-id",   d => norm(d.properties?.[NAME]))
+      .attr("data-name", d => d.properties?.[NAME] ?? "")
+      .attr("data-norm", d => canonical(d.properties?.[NAME]))
       .attr("fill", "#e6e6e6")
       .attr("stroke", "#222")
       .attr("stroke-width", 0.8)
-      .on("mouseover", function(){ d3.select(this).attr("stroke-width", 1.6); })
-      .on("mouseout",  function(){ d3.select(this).attr("stroke-width", 0.8); });
-
-    // small debug ping (you already saw this print 36 👍)
-    const uniq = Array.from(new Set(features.map(f => (f.properties?.[NAME] ?? "").trim()))).sort();
-    console.log("[SVG] unique ST_NM:", uniq.length);
+      .on("mouseover", function () { d3.select(this).attr("stroke-width", 1.6); })
+      .on("mouseout", function () { d3.select(this).attr("stroke-width", 0.8); });
 
     if (typeof onReady === "function") onReady();
   } catch (e) {
@@ -183,35 +157,33 @@ async function drawSubdivisionMap(svgSelector, onReady){
 }
 
 /***********************
- * COLOR FROM TABLE
+ * COLOR FROM TABLE (uses canonical id)
  ***********************/
-function paintMapsFromTable(){
+function paintMapsFromTable() {
   const rows = document.querySelectorAll("#subdivision-table-body tr");
   rows.forEach(row => {
-    const label = row.getAttribute("data-subdiv");
-    const target = TableToGeoName[label] || label; // match ST_NM
+    const id = row.dataset.norm;
     const d1 = row.querySelector("select.day1")?.value;
     const d2 = row.querySelector("select.day2")?.value;
-    const c1 = (window.forecastColors||{})[d1] || "#e6e6e6";
-    const c2 = (window.forecastColors||{})[d2] || "#e6e6e6";
+    const c1 = (window.forecastColors || {})[d1] || "#e6e6e6";
+    const c2 = (window.forecastColors || {})[d2] || "#e6e6e6";
 
-    d3.selectAll(`#indiaSubMapDay1 path.state[data-name='${cssEscape(target)}']`).attr("fill", c1);
-    d3.selectAll(`#indiaSubMapDay2 path.state[data-name='${cssEscape(target)}']`).attr("fill", c2);
+    d3.selectAll(`#indiaSubMapDay1 path.state[data-norm='${cssEscape(id)}']`).attr("fill", c1);
+    d3.selectAll(`#indiaSubMapDay2 path.state[data-norm='${cssEscape(id)}']`).attr("fill", c2);
   });
 }
 
 /***********************
  * INIT
  ***********************/
-window.onload = () => {
+window.addEventListener("load", () => {
   if (typeof updateISTDate === "function") updateISTDate();
 
   buildSubdivisionTable();
 
-  // draw both maps, then apply the table’s colors once
   drawSubdivisionMap("#indiaSubMapDay1", () => {
     drawSubdivisionMap("#indiaSubMapDay2", () => {
-      paintMapsFromTable();
+      paintMapsFromTable();  // initial paint
     });
   });
-};
+});
