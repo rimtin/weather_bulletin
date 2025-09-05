@@ -330,3 +330,21 @@ window.addEventListener("load", () => {
     });
   });
 });
+// Make sure legend never intercepts hover/clicks
+(function ensureLegendPassThrough(){
+  if (!document.querySelector('#hotfix-map-overlay')) {
+    const st = document.createElement('style');
+    st.id = 'hotfix-map-overlay';
+    st.textContent = `.map-legend, .map-legend * { pointer-events: none !important; }`;
+    document.head.appendChild(st);
+  }
+})();
+
+// Ensure SVG sizing even if CSS fails to load
+(function ensureSvgSizing(){
+  document.querySelectorAll('.map-wrapper svg').forEach(svg => {
+    svg.style.height = 'auto';
+    svg.style.aspectRatio = '860 / 580';
+    svg.style.minHeight = '580px';
+  });
+})();
