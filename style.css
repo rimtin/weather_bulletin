@@ -3,8 +3,17 @@
 body { font-family: Arial, sans-serif; background: #f2f2f2; display: flex; justify-content: center; }
 .container { background: #fff; padding: 20px; max-width: 794px; width: 100%; margin: 20px auto; box-shadow: 0 0 12px rgba(0,0,0,0.1); overflow-x: auto; }
 
+/* Use the same colors as in data.js (forecastColors) */
+:root{
+  --clr-clear:#A7D8EB;
+  --clr-low:#C4E17F;
+  --clr-medium:#FFF952;
+  --clr-high:#E69536;
+  --clr-overcast:#FF4D4D;
+}
+
 /* Pages */
-.page { padding: 20px 0; page-break-after: always; page-break-inside: avoid; }
+.page { padding: 20px 0; page-break-after: always; break-inside: avoid; }
 .page:last-child { page-break-after: auto; }
 
 /* Headings */
@@ -15,7 +24,7 @@ body { font-family: Arial, sans-serif; background: #f2f2f2; display: flex; justi
 .bulletin-text {
   border: 1px solid #ccc; padding: 10px; margin: 20px auto; border-radius: 6px;
   max-width: 600px; text-align: justify; font-size: 13px; line-height: 1.6;
-  white-space: pre-wrap; overflow-wrap: break-word; page-break-inside: avoid;
+  white-space: pre-wrap; overflow-wrap: break-word; break-inside: avoid;
   min-height: 100px; max-height: 400px; overflow-y: auto;
 }
 
@@ -38,21 +47,29 @@ select { width: 100%; padding: 4px; font-size: 12px; }
 
 /* Map */
 .map-label { text-align: center; font-weight: bold; font-size: 14px; margin: 10px 0; }
-.map-wrapper { margin: 10px auto; max-width: 720px; position: relative; page-break-inside: avoid; }
+.map-wrapper { margin: 10px auto; max-width: 720px; position: relative; break-inside: avoid; }
 .map-wrapper::before, .map-wrapper::after { display: none; }
 
-/* (only) the map SVGs */
-.map-wrapper svg {
-  width: 100%;
-  height: 280px;
-  display: block;
-  border: 1px solid #ccc;
-  margin: auto;
-  background: #fff; /* white canvas so polygons are visible */
-  position: relative;
-  z-index: 2;
+/* Map SVGs — responsive, non-collapsing, crisp strokes */
+.map-wrapper svg{
+  display:block;
+  width:100%;
+  height:auto;                 /* let it scale with width */
+  aspect-ratio: 860 / 580;     /* matches JS viewBox; keeps proper projection */
+  min-height:580px;            /* guarantees visibility even if container is short */
+  border:1px solid #ccc;
+  margin:auto;
+  background:#fff;
+  position:relative;
+  z-index:2;
 }
 
+/* Optional smaller min-height on narrow screens */
+@media (max-width: 600px){
+  .map-wrapper svg{ min-height:420px; }
+}
+
+/* Map legend */
 .map-legend {
   position: absolute; top: 12px; right: 12px;
   background: #fff; border: 1px solid #ccc; padding: 8px 12px;
@@ -64,12 +81,12 @@ select { width: 100%; padding: 4px; font-size: 12px; }
 .legend-swatch { width: 18px; height: 18px; border: 1.4px solid #222; margin-right: 6px; display: inline-block; border-radius: 3px; }
 .map-legend .legend-pattern { width:18px; height:18px; margin-right:6px; border:1.4px solid #222; border-radius:3px; background-image: repeating-linear-gradient(45deg, #999 0, #999 1px, transparent 1px, transparent 4px); }
 
-/* Legend swatches (for legend only) */
-.swatch-clear    { background:#9ED1E6 !important; color:#063647; font-weight:600; }
-.swatch-low      { background:#B9DB6E !important; color:#2C4400; font-weight:600; }
-.swatch-medium   { background:#FFE93A !important; color:#4A3D00; font-weight:700; }
-.swatch-high     { background:#E28322 !important; color:#3A1E00; font-weight:700; }
-.swatch-overcast { background:#FF3A3A !important; color:#4A0000; font-weight:700; }
+/* Legend swatches (match forecastColors exactly) */
+.swatch-clear    { background: var(--clr-clear)   !important; color:#063647; font-weight:600; }
+.swatch-low      { background: var(--clr-low)     !important; color:#2C4400; font-weight:600; }
+.swatch-medium   { background: var(--clr-medium)  !important; color:#4A3D00; font-weight:700; }
+.swatch-high     { background: var(--clr-high)    !important; color:#3A1E00; font-weight:700; }
+.swatch-overcast { background: var(--clr-overcast)!important; color:#4A0000; font-weight:700; }
 
 /* Subdivision table tweaks */
 .subdivision-table td, .subdivision-table th { text-align: left; }
@@ -93,12 +110,14 @@ button:hover { background: #0056b3; }
   fill: #e6e6e6;
   stroke: #222;
   stroke-width: 0.8px;
-  vector-effect: non-scaling-stroke;
+  vector-effect: non-scaling-stroke;     /* crisp borders when scaled */
+  shape-rendering: geometricPrecision;   /* smoother edges */
 }
+
+/* Fallback SVG rules (kept, but now consistent with .map-wrapper svg) */
 #indiaSubMapDay1,
 #indiaSubMapDay2 {
   display: block;
   width: 100%;
-  /* If you prefer CSS sizing instead of JS attributes, add a fixed height: */
-  min-height: 380px; /* or 580px to match JS */
+  min-height: 580px; /* keep consistent with JS and .map-wrapper svg */
 }
