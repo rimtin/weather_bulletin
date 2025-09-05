@@ -126,42 +126,47 @@ async function drawSubdivisionMap(svgSelector, onReady){
   const svg = d3.select(svgSelector);
   svg.selectAll("*").remove();
 
+  // fixed canvas for layout; viewBox lets it scale responsively
   const W = 860, H = 580;
   svg.attr("viewBox", `0 0 ${W} ${H}`).attr("preserveAspectRatio","xMidYMid meet");
 
   try {
     const geo = await loadGeoJSON(SUBDIV_GEO_URLS);
     const features = geo.features || [];
-    const collection = { type: "FeatureCollection", features };
-    const nameProp = "ST_NM"; // your file uses ST_NM for sub-division name
+    const fc = { type: "FeatureCollection", features };
 
-    // 🔑 Fit the map to the SVG (with a tiny padding)
-    const proj = d3.geoMercator().fitExtent([[5,5],[W-5,H-5]], collection);
-    const path = d3.geoPath().projection(proj);
+    // your file’s name field is ST_NM (IMD sub-division name)
+    const NAME = "ST_NM";
 
+    // --- the key change: fit the projection to the data area ---
+    const projection = d3.geoMercator();
+    const path = d3.geoPath().projection(projection);
+    // add a small padding (10 px margin inside the SVG box)
+    projection.fitSize([W - 10, H - 10], fc);
+
+    // draw polygons
     svg.selectAll("path.state")
       .data(features)
       .enter()
       .append("path")
-      .attr("class","state")
+      .attr("class", "state")
       .attr("d", path)
-      .attr("data-name", d => d.properties?.[nameProp] ?? "")
-      .attr("data-id",   d => norm(d.properties?.[nameProp] ?? ""))
+      .attr("data-name", d => d.properties?.[NAME] ?? "")
+      .attr("data-id",   d => norm(d.properties?.[NAME] ?? ""))
       .attr("fill", "#e6e6e6")
       .attr("stroke", "#222")
       .attr("stroke-width", 0.8)
-      .on("mouseover", function(){ d3.select(this).attr("stroke-width",1.6); })
-      .on("mouseout",  function(){ d3.select(this).attr("stroke-width",0.8); });
+      .on("mouseover", function(){ d3.select(this).attr("stroke-width", 1.6); })
+      .on("mouseout",  function(){ d3.select(this).attr("stroke-width", 0.8); });
 
-    if(typeof onReady === "function") onReady();
+    if (typeof onReady === "function") onReady();
   } catch (e) {
     console.error("Geo load error:", e);
     const msg = document.createElement("div");
     msg.style.color = "crimson";
-    msg.style.margin = "8px 0";
     msg.textContent = "⚠️ Could not load the sub-division GeoJSON.";
     svg.node().parentNode.appendChild(msg);
-    if(typeof onReady === "function") onReady();
+    if (typeof onReady === "function") onReady();
   }
 }
 
