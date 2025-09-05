@@ -6,7 +6,17 @@ window.forecastColors = {
   "High Cloud Cover": "#E69536",
   "Overcast Cloud Cover": "#FF4D4D"
 };
-window.forecastOptions = Object.keys(window.forecastColors);
+
+// Extra labels that map to the hatched "No Forecast" fill in app.js
+window.noForecastLabel = "No Forecast";
+window.placeholderLabel = "— Select —";
+
+// Order: placeholder (default) → color options → explicit No Forecast
+window.forecastOptions = [
+  window.placeholderLabel,
+  ...Object.keys(window.forecastColors),
+  window.noForecastLabel
+];
 
 // ---- SUBDIVISION ROWS (global) ----
 // IMPORTANT: Keep names EXACTLY as in your GeoJSON ST_NM (case & spelling).
@@ -19,8 +29,8 @@ window.subdivisions = [
   { state: "Rajasthan",         name: "East Rajasthan" },
 
   // Gujarat
-  { state: "Gujarat",           name: "Saurashtra & Kachh" },     // fixed from "Kachchh"
-  { state: "Gujarat",           name: "Gujarat region" },         // fixed case
+  { state: "Gujarat",           name: "Saurashtra & Kachh" },     // exact ST_NM
+  { state: "Gujarat",           name: "Gujarat region" },         // exact case
 
   // Uttar Pradesh
   { state: "Uttar Pradesh",     name: "West Uttar Pradesh" },
@@ -49,8 +59,8 @@ window.subdivisions = [
   { state: "Andhra Pradesh",    name: "Rayalaseema" },
 
   // Karnataka
-  { state: "Karnataka",         name: "N.I. Karnataka" },         // fixed from "North Interior Karnataka"
-  { state: "Karnataka",         name: "S.I. Karnataka" },         // fixed from "South Interior Karnataka"
+  { state: "Karnataka",         name: "N.I. Karnataka" },         // exact ST_NM
+  { state: "Karnataka",         name: "S.I. Karnataka" },         // exact ST_NM
 
   // Tamil Nadu
   { state: "Tamil Nadu",        name: "Tamil Nadu & Puducherry" }
