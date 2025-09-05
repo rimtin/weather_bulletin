@@ -1,7 +1,6 @@
 /***********************
  * CONFIG
  ***********************/
-// Use correct paths where the file actually lives + robust fallbacks
 const SUBDIV_GEO_URLS = [
   "indian_met_zones.geojson",                                   // GitHub Pages root
   "assets/indian_met_zones.geojson",                            // if later moved into /assets
@@ -22,17 +21,15 @@ const cssEscape = (s) => {
   return s.replace(/'/g, "\\'").replace(/"/g, '\\"');
 };
 
-/** Normalize to a stable key so small spelling/style changes still match */
 function canonical(input) {
   let s = String(input || "")
-    .replace(/[\u2010-\u2015]/g, "-") // normalize dashes
+    .replace(/[\u2010-\u2015]/g, "-")
     .toLowerCase()
-    .replace(/\./g, "")                // N.I. -> NI
+    .replace(/\./g, "")
     .replace(/&/g, "and")
     .replace(/\s+/g, " ")
     .trim();
 
-  // align to exact ST_NM spellings used in your GeoJSON
   s = s.replace(/north *interior *karnataka|n *i *karnataka/, "ni karnataka");
   s = s.replace(/south *interior *karnataka|s *i *karnataka/, "si karnataka");
   s = s.replace(/saurashtra *and *(kutch|kachchh|kachh)/, "saurashtra and kachh");
@@ -66,7 +63,6 @@ function pickNameKey(features) {
     Object.keys(p).forEach(k => seen.add(k));
   }
   for (const key of priority) if (seen.has(key)) return key;
-  // fallback: first string-like property we find
   for (const f of features) {
     const p = f?.properties || {};
     for (const k of Object.keys(p)) if (typeof p[k] === "string" && p[k]) return k;
@@ -147,6 +143,22 @@ function ensureNoForecastPattern(svg) {
   return patId;
 }
 
+/** Keep only features whose centroid lies roughly over India (for fitting only) */
+function featuresNearIndia(features) {
+  // generous bounds to include Andaman & Nicobar and Lakshadweep
+  const LON_MIN = 60, LON_MAX = 100;
+  const LAT_MIN = -5, LAT_MAX = 40;
+  const ok = f => {
+    try {
+      const [lon, lat] = d3.geoCentroid(f);
+      return isFinite(lon) && isFinite(lat) &&
+             lon >= LON_MIN && lon <= LON_MAX &&
+             lat >= LAT_MIN && lat <= LAT_MAX;
+    } catch { return false; }
+  };
+  return features.filter(ok);
+}
+
 /***********************
  * TABLE
  ***********************/
@@ -201,7 +213,7 @@ function buildSubdivisionTable() {
     tr.addEventListener("mouseleave", () => {
       d3.selectAll(
         `#indiaSubMapDay1 [data-norm='${cssEscape(id)}'], #indiaSubMapDay2 [data-norm='${cssEscape(id)}']`
-      ).attr("stroke-width", 0.8);
+      ).attr("stroke-width", 0.6);
     });
   });
 }
@@ -223,14 +235,12 @@ async function drawSubdivisionMap(svgSelector, onReady) {
 
   svg.selectAll("*").remove();
 
-  // Give the SVG a concrete size so it can’t collapse
   const W = 860, H = 580;
   svg.attr("viewBox", `0 0 ${W} ${H}`)
      .attr("preserveAspectRatio", "xMidYMid meet")
      .attr("width", W)
      .attr("height", H);
 
-  // Ensure "No Forecast" pattern is available for this SVG
   const nfPatternId = ensureNoForecastPattern(svg);
 
   try {
@@ -241,18 +251,23 @@ async function drawSubdivisionMap(svgSelector, onReady) {
       return onReady?.();
     }
 
-    // Auto-detect the label key (defaults to ST_NM)
     const NAME = pickNameKey(features);
     console.info("[Map] Using name field:", NAME);
 
     const projection = d3.geoMercator();
     const path = d3.geoPath().projection(projection);
 
-    projection.fitSize([W - 10, H - 10], fc);
+    // Fit using only plausible-in-India features to ignore far-out outliers
+    const fitFeats = featuresNearIndia(features);
+    const fitFC = { type: "FeatureCollection", features: fitFeats.length ? fitFeats : features };
+    if (fitFeats.length && fitFeats.length !== features.length) {
+      console.warn("[Map] Fitting on", fitFeats.length, "near-India features (out of", features.length, ")");
+    }
+    projection.fitSize([W - 10, H - 10], fitFC);
 
     // ----- FILLS layer (no stroke) -----
-    const fills = svg.append("g").attr("class", "fills")
-      .selectAll("path.state")
+    const fillsG = svg.append("g").attr("class", "fills");
+    fillsG.selectAll("path.state")
       .data(features)
       .enter()
       .append("path")
@@ -263,14 +278,20 @@ async function drawSubdivisionMap(svgSelector, onReady) {
       .attr("fill", "#e6e6e6")
       .attr("stroke", "none")
       .attr("vector-effect", "non-scaling-stroke")
-      .on("mouseover", function () { d3.select(this).attr("stroke-width", 1.6); })
-      .on("mouseout", function () { d3.select(this).attr("stroke-width", 0); })
+      .on("mouseover", function (event, d) {
+        const id = canonical(d.properties?.[NAME]);
+        svg.select(`.borders .border[data-norm='${cssEscape(id)}']`).attr("stroke-width", 1.6);
+      })
+      .on("mouseout", function (event, d) {
+        const id = canonical(d.properties?.[NAME]);
+        svg.select(`.borders .border[data-norm='${cssEscape(id)}']`).attr("stroke-width", 0.6);
+      })
       .append("title")
       .text(d => d.properties?.[NAME] ?? "");
 
     // ----- BORDERS overlay (stroke only, sits on top) -----
-    svg.append("g").attr("class", "borders")
-      .selectAll("path.border")
+    const bordersG = svg.append("g").attr("class", "borders");
+    bordersG.selectAll("path.border")
       .data(features)
       .enter()
       .append("path")
@@ -280,12 +301,12 @@ async function drawSubdivisionMap(svgSelector, onReady) {
       .attr("stroke", "#666")
       .attr("stroke-width", 0.6)
       .attr("vector-effect", "non-scaling-stroke")
-      .attr("pointer-events", "none");
+      .attr("pointer-events", "none")
+      .attr("data-name", d => d.properties?.[NAME] ?? "")
+      .attr("data-norm", d => canonical(d.properties?.[NAME]));
 
-    // Tag the SVG with the pattern id for later lookup
     svg.attr("data-nf-pattern", nfPatternId);
 
-    // Diagnostics
     const bb = svg.node().getBoundingClientRect();
     console.info("[Map] SVG size:", Math.round(bb.width), "x", Math.round(bb.height));
     console.table(features.slice(0, 5).map(f => ({ NAME: f.properties?.[NAME] ?? "(none)" })));
