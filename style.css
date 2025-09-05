@@ -50,7 +50,7 @@ select { width: 100%; padding: 4px; font-size: 12px; }
 .map-wrapper::before,
 .map-wrapper::after { display: none; }
 
-/* Style ONLY the map SVGs (do not use a global `svg {}` rule) */
+/* Style ONLY the map SVGs (no global svg rule) */
 .map-wrapper svg {
   width: 100%;
   height: 280px;              /* adjust height if you want */
@@ -62,6 +62,7 @@ select { width: 100%; padding: 4px; font-size: 12px; }
   z-index: 2;
 }
 
+/* Legend */
 .map-legend {
   position: absolute; top: 12px; right: 12px;
   background: #fff; border: 1px solid #ccc; padding: 8px 12px;
@@ -97,7 +98,7 @@ select { width: 100%; padding: 4px; font-size: 12px; }
 button { display: block; margin: 30px auto 10px; padding: 10px 20px; font-size: 14px; background: #007bff; border: none; color: #fff; border-radius: 6px; cursor: pointer; }
 button:hover { background: #0056b3; }
 
-/* === Allow JS to recolor polygons (no !important here) === */
+/* === JS will recolor polygons; keep base neutral === */
 #indiaSubMapDay1 path.state,
 #indiaSubMapDay2 path.state {
   fill: #e6e6e6;              /* neutral base; D3 will override */
@@ -107,9 +108,4 @@ button:hover { background: #0056b3; }
   opacity: 1;
   visibility: visible;
   display: inline;
-}
-.map-wrapper { margin:10px auto; max-width:720px; position:relative; }
-.map-wrapper svg { width:100%; height:280px; display:block; border:1px solid #ccc; background:#fff; }
-#indiaSubMapDay1 path.state, #indiaSubMapDay2 path.state {
-  fill:#e6e6e6; stroke:#222; stroke-width:0.8px; vector-effect:non-scaling-stroke;
 }
