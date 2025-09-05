@@ -14,28 +14,26 @@ const TableToGeoName = {
   "Telangana": "Telangana",
   "Tamil Nadu": "Tamil Nadu & Puducherry",
   "Chhattisgarh": "Chhattisgarh",
-  "Bihar": "Bihar",
   "Andhra Pradesh": "Coastal Andhra Pradesh",
   "SW-AP (Rayalaseema)": "Rayalaseema",
   "North-Karnataka": "N.I. Karnataka",
   "South- Karnataka": "S.I. Karnataka",
-
-  // splits
   "W-Raj": "West Rajasthan",
   "E-Raj": "East Rajasthan",
-
   "W-Gujarat (Saurashtra & Kachh)": "Saurashtra & Kachh",
   "E-Gujarat Region": "Gujarat region",
-
   "W-UP": "West Uttar Pradesh",
   "E-UP": "East Uttar Pradesh",
-
   "W-MP": "West Madhya Pradesh",
   "E-MP": "East Madhya Pradesh",
-
   "Madhya -MH": "Madhya Maharashtra",
   "Marathwada": "Marathwada",
-  "Vidarbha": "Vidarbha"
+  "Vidarbha": "Vidarbha",
+  "Andhra Pradesh": "Coastal Andhra Pradesh",
+  "SW-AP (Rayalaseema)": "Rayalaseema",
+  "North-Karnataka": "N.I. Karnataka",
+  "South- Karnataka": "S.I. Karnataka"
+  // Everything else maps to itself via fallback
 };
 
 /***********************
@@ -165,21 +163,30 @@ async function drawSubdivisionMap(svgSelector, onReady){
  ***********************/
 function paintMapsFromTable(){
   const rows = document.querySelectorAll("#subdivision-table-body tr");
-  rows.forEach(tr=>{
-    const tableLabel = tr.dataset.subdiv;
-    const geoName = TableToGeoName[tableLabel] || tableLabel;
-    const id = norm(geoName);
-
-    const d1 = tr.querySelector("select.day1")?.value;
-    const d2 = tr.querySelector("select.day2")?.value;
-
+  rows.forEach(row=>{
+    const label = row.getAttribute("data-subdiv");
+    const target = TableToGeoName[label] || label;   // normalized name
+    const d1 = row.querySelector("select.day1")?.value;
+    const d2 = row.querySelector("select.day2")?.value;
     const c1 = (window.forecastColors||{})[d1] || "#e6e6e6";
     const c2 = (window.forecastColors||{})[d2] || "#e6e6e6";
 
-    d3.selectAll(`#indiaSubMapDay1 [data-id='${cssEscape(id)}']`).attr("fill", c1);
-    d3.selectAll(`#indiaSubMapDay2 [data-id='${cssEscape(id)}']`).attr("fill", c2);
+    d3.selectAll(`#indiaSubMapDay1 path.state[data-name='${cssEscape(target)}']`).attr("fill", c1);
+    d3.selectAll(`#indiaSubMapDay2 path.state[data-name='${cssEscape(target)}']`).attr("fill", c2);
   });
 }
+
+// row hover highlight
+document.getElementById("subdivision-table-body")?.querySelectorAll("tr").forEach(tr=>{
+  const label = tr.getAttribute("data-subdiv");
+  const geo   = TableToGeoName[label] || label;
+  tr.addEventListener("mouseenter", ()=>{
+    d3.selectAll(`#indiaSubMapDay1 path.state[data-name='${cssEscape(geo)}'], #indiaSubMapDay2 path.state[data-name='${cssEscape(geo)}']`).attr("stroke-width", 1.6);
+  });
+  tr.addEventListener("mouseleave", ()=>{
+    d3.selectAll(`#indiaSubMapDay1 path.state[data-name='${cssEscape(geo)}'], #indiaSubMapDay2 path.state[data-name='${cssEscape(geo)}']`).attr("stroke-width", 0.8);
+  });
+});
 
 /***********************
  * INIT
