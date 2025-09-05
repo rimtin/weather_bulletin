@@ -3,13 +3,9 @@
  ***********************/
 // Use correct paths where the file actually lives + robust fallbacks
 const SUBDIV_GEO_URLS = [
-  // GitHub Pages root
-  "indian_met_zones.geojson",
-  // If you later move it into /assets
-  "assets/indian_met_zones.geojson",
-  // Live Pages URL
+  "indian_met_zones.geojson",                                   // GitHub Pages root
+  "assets/indian_met_zones.geojson",                            // if later moved into /assets
   "https://rimtin.github.io/weather_bulletin/indian_met_zones.geojson",
-  // Raw + jsDelivr fallbacks
   "https://raw.githubusercontent.com/rimtin/weather_bulletin/main/indian_met_zones.geojson",
   "https://cdn.jsdelivr.net/gh/rimtin/weather_bulletin@main/indian_met_zones.geojson"
 ];
@@ -18,43 +14,32 @@ const SUBDIV_GEO_URLS = [
 const TableToGeoName = {};
 
 /***********************
- * GLOBALS (from data.js)
- * - window.subdivisions
- * - window.forecastOptions
- * - window.forecastColors
- * - updateISTDate()
- ***********************/
-
-/***********************
  * HELPERS
  ***********************/
 const cssEscape = (s) => {
   s = String(s ?? "");
   if (window.CSS && typeof CSS.escape === "function") return CSS.escape(s);
-  // basic fallback
   return s.replace(/'/g, "\\'").replace(/"/g, '\\"');
 };
 
 /** Normalize to a stable key so small spelling/style changes still match */
 function canonical(input) {
   let s = String(input || "")
-    // normalize unicode dashes to ASCII hyphen
-    .replace(/[\u2010-\u2015]/g, "-")
+    .replace(/[\u2010-\u2015]/g, "-") // normalize dashes
     .toLowerCase()
-    .replace(/\./g, "")      // remove dots (N.I. -> NI)
-    .replace(/&/g, "and")    // unify ampersand
-    .replace(/\s+/g, " ")    // collapse whitespace
+    .replace(/\./g, "")                // N.I. -> NI
+    .replace(/&/g, "and")
+    .replace(/\s+/g, " ")
     .trim();
 
   // align to exact ST_NM spellings used in your GeoJSON
   s = s.replace(/north *interior *karnataka|n *i *karnataka/, "ni karnataka");
   s = s.replace(/south *interior *karnataka|s *i *karnataka/, "si karnataka");
-  // IMPORTANT: canonicalize to "saurashtra and kachh" (one 'h'), matching ST_NM
   s = s.replace(/saurashtra *and *(kutch|kachchh|kachh)/, "saurashtra and kachh");
   s = s.replace(/gujarat *region/, "gujarat region");
   s = s.replace(/tamil *nadu *and *puducherry/, "tamil nadu and puducherry");
 
-  return s.replace(/[^\w]+/g, "-"); // → "saurashtra-and-kachh", "ni-karnataka", ...
+  return s.replace(/[^\w]+/g, "-");
 }
 
 function showInlineError(svg, msg) {
@@ -77,25 +62,19 @@ function pickNameKey(features) {
   ];
   const seen = new Set();
   for (const f of features) {
-    const p = f && f.properties || {};
+    const p = f?.properties || {};
     Object.keys(p).forEach(k => seen.add(k));
   }
-  for (const key of priority) {
-    if (seen.has(key)) return key;
-  }
-  // fallback: first string-like property we find
+  for (const key of priority) if (seen.has(key)) return key;
   for (const f of features) {
-    const p = f && f.properties || {};
-    for (const k of Object.keys(p)) {
-      if (typeof p[k] === "string" && p[k]) return k;
-    }
+    const p = f?.properties || {};
+    for (const k of Object.keys(p)) if (typeof p[k] === "string" && p[k]) return k;
   }
-  return "ST_NM"; // default if nothing else
+  return "ST_NM";
 }
 
-/** Try to coerce any JSON (GeoJSON or TopoJSON) to a valid FeatureCollection */
+/** (Optional) TopoJSON -> FeatureCollection support if needed */
 function toFeatureCollection(jsonObj) {
-  // TopoJSON support
   if ((jsonObj && jsonObj.type === "Topology") || jsonObj?.objects) {
     const topo = jsonObj;
     const objects = topo.objects || {};
@@ -105,7 +84,6 @@ function toFeatureCollection(jsonObj) {
     if (!Array.isArray(fc.features)) throw new Error("TopoJSON -> FeatureCollection failed");
     return { type: "FeatureCollection", features: fc.features.filter(f => f && f.geometry) };
   }
-  // GeoJSON FeatureCollection
   if (Array.isArray(jsonObj?.features)) {
     return { type: "FeatureCollection", features: jsonObj.features.filter(f => f && f.geometry) };
   }
@@ -116,9 +94,8 @@ async function loadGeoJSON(urls) {
   let lastErr;
   for (const u of urls) {
     try {
-      // Bust caches on all URLs (including relative paths)
       const joiner = u.includes("?") ? "&" : "?";
-      const url = `${u}${joiner}v=${Date.now()}`;
+      const url = `${u}${joiner}v=${Date.now()}`;       // cache-bust
       const r = await fetch(url, { cache: "no-store" });
       if (!r.ok) throw new Error(`${r.status} ${r.statusText}`);
       const j = await r.json();
@@ -129,7 +106,6 @@ async function loadGeoJSON(urls) {
         console.warn("[GeoJSON] Loaded but empty features:", u);
         throw new Error("Empty features");
       }
-
       console.info("[GeoJSON] OK:", u, "features:", feats.length);
       return fc;
     } catch (e) {
@@ -138,6 +114,39 @@ async function loadGeoJSON(urls) {
     }
   }
   throw lastErr || new Error("All URL attempts failed");
+}
+
+/** Ensure a 'No Forecast' hatch pattern exists on this SVG, return its id */
+function ensureNoForecastPattern(svg) {
+  const svgId = svg.attr("id") || "map";
+  const patId = `${svgId}_noForecast`;
+  let defs = svg.select("defs");
+  if (defs.empty()) defs = svg.append("defs");
+
+  // Only create once
+  if (svg.select(`#${cssEscape(patId)}`).empty()) {
+    const pattern = defs.append("pattern")
+      .attr("id", patId)
+      .attr("patternUnits", "userSpaceOnUse")
+      .attr("width", 8)
+      .attr("height", 8)
+      .attr("patternTransform", "rotate(45)");
+
+    // Base (light) background under the stripes
+    pattern.append("rect")
+      .attr("width", 8)
+      .attr("height", 8)
+      .attr("fill", "#f2f2f2");
+
+    // Vertical stroke that becomes diagonal due to rotate(45)
+    pattern.append("path")
+      .attr("d", "M 0 0 L 0 8")
+      .attr("stroke", "#999")
+      .attr("stroke-width", 1);
+  }
+
+  svg.attr("data-nf-pattern", patId);
+  return patId;
 }
 
 /***********************
@@ -151,14 +160,11 @@ function buildSubdivisionTable() {
   }
   tbody.innerHTML = "";
 
-  // group by state for rowspans
   const groups = {};
   const list = Array.isArray(window.subdivisions) ? window.subdivisions : [];
   if (!list.length) console.warn("[Table] window.subdivisions is empty.");
 
-  list.forEach(r => {
-    (groups[r.state] ||= []).push(r);
-  });
+  list.forEach(r => { (groups[r.state] ||= []).push(r); });
 
   let serial = 1;
   Object.keys(groups).forEach(state => {
@@ -221,11 +227,13 @@ async function drawSubdivisionMap(svgSelector, onReady) {
 
   // Give the SVG a concrete size so it can’t collapse
   const W = 860, H = 580;
-  svg
-    .attr("viewBox", `0 0 ${W} ${H}`)
-    .attr("preserveAspectRatio", "xMidYMid meet")
-    .attr("width", W)
-    .attr("height", H);
+  svg.attr("viewBox", `0 0 ${W} ${H}`)
+     .attr("preserveAspectRatio", "xMidYMid meet")
+     .attr("width", W)
+     .attr("height", H);
+
+  // Ensure "No Forecast" pattern is available for this SVG
+  const nfPatternId = ensureNoForecastPattern(svg);
 
   try {
     const fc = await loadGeoJSON(SUBDIV_GEO_URLS);
@@ -242,11 +250,11 @@ async function drawSubdivisionMap(svgSelector, onReady) {
     const projection = d3.geoMercator();
     const path = d3.geoPath().projection(projection);
 
-    // Fit only after we know we have features
     projection.fitSize([W - 10, H - 10], fc);
 
-    const g = svg.append("g").attr("class", "states");
-    g.selectAll("path.state")
+    svg.append("g")
+      .attr("class", "states")
+      .selectAll("path.state")
       .data(features)
       .enter()
       .append("path")
@@ -261,7 +269,10 @@ async function drawSubdivisionMap(svgSelector, onReady) {
       .append("title")
       .text(d => d.properties?.[NAME] ?? "");
 
-    // Diagnostics: confirm something drew and the SVG has size
+    // Tag the SVG with the pattern id for later lookup
+    svg.attr("data-nf-pattern", nfPatternId);
+
+    // Diagnostics
     const bb = svg.node().getBoundingClientRect();
     console.info("[Map] SVG size:", Math.round(bb.width), "x", Math.round(bb.height));
     console.table(features.slice(0, 5).map(f => ({ NAME: f.properties?.[NAME] ?? "(none)" })));
@@ -279,12 +290,19 @@ async function drawSubdivisionMap(svgSelector, onReady) {
  ***********************/
 function paintMapsFromTable() {
   const rows = document.querySelectorAll("#subdivision-table-body tr");
+  const patt1 = document.getElementById("indiaSubMapDay1")?.getAttribute("data-nf-pattern");
+  const patt2 = document.getElementById("indiaSubMapDay2")?.getAttribute("data-nf-pattern");
+
   rows.forEach(row => {
     const id = row.dataset.norm;
-    const d1 = row.querySelector("select.day1")?.value;
-    const d2 = row.querySelector("select.day2")?.value;
-    const c1 = (window.forecastColors || {})[d1] || "#e6e6e6";
-    const c2 = (window.forecastColors || {})[d2] || "#e6e6e6";
+    const d1 = row.querySelector("select.day1")?.value?.trim();
+    const d2 = row.querySelector("select.day2")?.value?.trim();
+
+    const isNo1 = !d1 || /no\s*forecast/i.test(d1) || /no\s*forecast\s*available/i.test(d1) || /select/i.test(d1);
+    const isNo2 = !d2 || /no\s*forecast/i.test(d2) || /no\s*forecast\s*available/i.test(d2) || /select/i.test(d2);
+
+    const c1 = isNo1 ? (patt1 ? `url(#${patt1})` : "#f2f2f2") : ((window.forecastColors || {})[d1] || "#e6e6e6");
+    const c2 = isNo2 ? (patt2 ? `url(#${patt2})` : "#f2f2f2") : ((window.forecastColors || {})[d2] || "#e6e6e6");
 
     d3.selectAll(`#indiaSubMapDay1 path.state[data-norm='${cssEscape(id)}']`).attr("fill", c1);
     d3.selectAll(`#indiaSubMapDay2 path.state[data-norm='${cssEscape(id)}']`).attr("fill", c2);
@@ -299,21 +317,16 @@ window.addEventListener("unhandledrejection", e => {
 });
 
 window.addEventListener("load", () => {
-  if (typeof updateISTDate === "function") updateISTDate(); // use the Asia/Kolkata version
+  if (typeof updateISTDate === "function") updateISTDate(); // Asia/Kolkata
 
-  // Quick checks to avoid silent failures
-  if (!document.getElementById("indiaSubMapDay1")) {
-    console.error("[Init] Missing <svg id='indiaSubMapDay1'> in HTML.");
-  }
-  if (!document.getElementById("indiaSubMapDay2")) {
-    console.error("[Init] Missing <svg id='indiaSubMapDay2'> in HTML.");
-  }
+  if (!document.getElementById("indiaSubMapDay1")) console.error("[Init] Missing <svg id='indiaSubMapDay1'> in HTML.");
+  if (!document.getElementById("indiaSubMapDay2")) console.error("[Init] Missing <svg id='indiaSubMapDay2'> in HTML.");
 
   buildSubdivisionTable();
 
   drawSubdivisionMap("#indiaSubMapDay1", () => {
     drawSubdivisionMap("#indiaSubMapDay2", () => {
-      paintMapsFromTable();  // initial paint
+      paintMapsFromTable();  // initial paint with hatch where blank
     });
   });
 });
