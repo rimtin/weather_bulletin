@@ -69,13 +69,15 @@ select { width: 100%; padding: 4px; font-size: 12px; }
   .map-wrapper svg{ min-height:420px; }
 }
 
-/* Map legend */
+/* Map legend (does not block pointer events on the map) */
 .map-legend {
   position: absolute; top: 12px; right: 12px;
   background: #fff; border: 1px solid #ccc; padding: 8px 12px;
   font-size: 12px; border-radius: 6px; box-shadow: 0 0 4px rgba(0,0,0,0.1);
   width: fit-content; z-index: 10;
 }
+.map-legend, .map-legend * { pointer-events: none; }
+
 .map-legend ul { list-style: none; padding: 0; margin: 0; }
 .map-legend li { margin-bottom: 6px; display: flex; align-items: center; }
 .legend-swatch { width: 18px; height: 18px; border: 1.4px solid #222; margin-right: 6px; display: inline-block; border-radius: 3px; }
@@ -114,10 +116,10 @@ button:hover { background: #0056b3; }
   shape-rendering: geometricPrecision;   /* smoother edges */
 }
 
-/* Fallback SVG rules (kept, but now consistent with .map-wrapper svg) */
+/* Fallback SVG rules (consistent with .map-wrapper svg) */
 #indiaSubMapDay1,
 #indiaSubMapDay2 {
   display: block;
   width: 100%;
-  min-height: 580px; /* keep consistent with JS and .map-wrapper svg */
+  min-height: 580px;
 }
