@@ -9,35 +9,36 @@ window.forecastColors = {
 window.forecastOptions = Object.keys(window.forecastColors);
 
 // ---- SUBDIVISION ROWS (global) ----
-// Keep labels exactly as you want in the table (column “Sub Division”).
+// IMPORTANT: Keep names exactly as in your GeoJSON ST_NM (the normalizer
+// will accept small variants like Kutch/Kachchh, N.I./North Interior).
 window.subdivisions = [
   // Punjab
   { state: "Punjab",            name: "Punjab" },
 
   // Rajasthan
-  { state: "Rajasthan",         name: "W-Raj" },
-  { state: "Rajasthan",         name: "E-Raj" },
+  { state: "Rajasthan",         name: "West Rajasthan" },
+  { state: "Rajasthan",         name: "East Rajasthan" },
 
   // Gujarat
-  { state: "Gujarat",           name: "W-Gujarat (Saurashtra & Kachh)" },
-  { state: "Gujarat",           name: "E-Gujarat Region" },
+  { state: "Gujarat",           name: "Saurashtra & Kachchh" }, // will also match “Kutch/Kachh”
+  { state: "Gujarat",           name: "Gujarat Region" },
 
   // Uttar Pradesh
-  { state: "Uttar Pradesh",     name: "W-UP" },
-  { state: "Uttar Pradesh",     name: "E-UP" },
+  { state: "Uttar Pradesh",     name: "West Uttar Pradesh" },
+  { state: "Uttar Pradesh",     name: "East Uttar Pradesh" },
 
   // Bihar
   { state: "Bihar",             name: "Bihar" },
 
   // Madhya Pradesh
-  { state: "Madhya Pradesh",    name: "W-MP" },
-  { state: "Madhya Pradesh",    name: "E-MP" },
+  { state: "Madhya Pradesh",    name: "West Madhya Pradesh" },
+  { state: "Madhya Pradesh",    name: "East Madhya Pradesh" },
 
   // Chhattisgarh
   { state: "Chhattisgarh",      name: "Chhattisgarh" },
 
   // Maharashtra
-  { state: "Maharashtra",       name: "Madhya -MH" },
+  { state: "Maharashtra",       name: "Madhya Maharashtra" },
   { state: "Maharashtra",       name: "Marathwada" },
   { state: "Maharashtra",       name: "Vidarbha" },
 
@@ -45,15 +46,15 @@ window.subdivisions = [
   { state: "Telangana",         name: "Telangana" },
 
   // Andhra Pradesh
-  { state: "Andhra Pradesh",    name: "Andhra Pradesh" },        // Coastal AP
-  { state: "Andhra Pradesh",    name: "SW-AP (Rayalaseema)" },   // Rayalaseema
+  { state: "Andhra Pradesh",    name: "Coastal Andhra Pradesh" },
+  { state: "Andhra Pradesh",    name: "Rayalaseema" },
 
   // Karnataka
-  { state: "Karnataka",         name: "North-Karnataka" },
-  { state: "Karnataka",         name: "South- Karnataka" },
+  { state: "Karnataka",         name: "North Interior Karnataka" }, // also matches N.I. Karnataka
+  { state: "Karnataka",         name: "South Interior Karnataka" }, // also matches S.I. Karnataka
 
   // Tamil Nadu
-  { state: "Tamil Nadu",        name: "Tamil Nadu" }
+  { state: "Tamil Nadu",        name: "Tamil Nadu & Puducherry" }
 ];
 
 // ---- Date header ----
