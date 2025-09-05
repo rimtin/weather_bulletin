@@ -1,13 +1,20 @@
 /***********************
  * CONFIG
  ***********************/
+// Use correct paths where the file actually lives + robust fallbacks
 const SUBDIV_GEO_URLS = [
+  // GitHub Pages root
+  "indian_met_zones.geojson",
+  // If you later move it into /assets
   "assets/indian_met_zones.geojson",
-  "https://raw.githubusercontent.com/rimtin/weather_bulletin/main/assets/indian_met_zones.geojson",
-  "https://cdn.jsdelivr.net/gh/rimtin/weather_bulletin@main/assets/indian_met_zones.geojson"
+  // Live Pages URL
+  "https://rimtin.github.io/weather_bulletin/indian_met_zones.geojson",
+  // Raw + jsDelivr fallbacks
+  "https://raw.githubusercontent.com/rimtin/weather_bulletin/main/indian_met_zones.geojson",
+  "https://cdn.jsdelivr.net/gh/rimtin/weather_bulletin@main/indian_met_zones.geojson"
 ];
 
-// optional aliases if you ever need them; we mostly rely on canonical()
+// Optional aliases (kept empty because we canonicalize)
 const TableToGeoName = {};
 
 /***********************
@@ -21,9 +28,14 @@ const TableToGeoName = {};
 /***********************
  * HELPERS
  ***********************/
-const cssEscape = s => String(s).replace(/'/g, "\\'");
+const cssEscape = (s) => {
+  s = String(s ?? "");
+  if (window.CSS && typeof CSS.escape === "function") return CSS.escape(s);
+  // basic fallback
+  return s.replace(/'/g, "\\'").replace(/"/g, '\\"');
+};
 
-/** Turn a name into a stable key so small spelling/style changes still match */
+/** Normalize to a stable key so small spelling/style changes still match */
 function canonical(input) {
   let s = String(input || "")
     .toLowerCase()
@@ -43,21 +55,45 @@ function canonical(input) {
   return s.replace(/[^\w]+/g, "-"); // → "saurashtra-and-kachh", "ni-karnataka", ...
 }
 
+function showInlineError(svg, msg) {
+  const W = 860, H = 580;
+  svg.attr("viewBox", `0 0 ${W} ${H}`).attr("preserveAspectRatio", "xMidYMid meet");
+  svg.append("text")
+    .attr("x", W / 2)
+    .attr("y", H / 2)
+    .attr("text-anchor", "middle")
+    .attr("font-size", 16)
+    .attr("fill", "#aa0000")
+    .text(msg);
+}
+
 async function loadGeoJSON(urls) {
-  let last;
+  let lastErr;
   for (const u of urls) {
     try {
-      const r = await fetch(u + (u.startsWith("http") ? `?v=${Date.now()}` : ""));
+      // Bust caches on all URLs (including relative paths)
+      const joiner = u.includes("?") ? "&" : "?";
+      const url = `${u}${joiner}v=${Date.now()}`;
+      const r = await fetch(url, { cache: "no-store" });
       if (!r.ok) throw new Error(`${r.status} ${r.statusText}`);
       const j = await r.json();
-      console.log("[GeoJSON] loaded:", u, "features:", (j.features || []).length);
-      return j;
+
+      // Validate
+      const feats = Array.isArray(j?.features) ? j.features : [];
+      const validFeats = feats.filter(f => f && f.geometry);
+      if (!feats.length || !validFeats.length) {
+        console.warn("[GeoJSON] Loaded but empty or no valid geometries:", u);
+        throw new Error("Empty features or invalid geometry");
+      }
+
+      console.info("[GeoJSON] OK:", u, "features:", feats.length, "valid:", validFeats.length);
+      return { type: "FeatureCollection", features: validFeats };
     } catch (e) {
       console.warn("[GeoJSON] failed:", u, e);
-      last = e;
+      lastErr = e;
     }
   }
-  throw last || new Error("All URLs failed");
+  throw lastErr || new Error("All URL attempts failed");
 }
 
 /***********************
@@ -65,12 +101,18 @@ async function loadGeoJSON(urls) {
  ***********************/
 function buildSubdivisionTable() {
   const tbody = document.getElementById("subdivision-table-body");
-  if (!tbody) return;
+  if (!tbody) {
+    console.error("[Table] Missing #subdivision-table-body in HTML.");
+    return;
+  }
   tbody.innerHTML = "";
 
   // group by state for rowspans
   const groups = {};
-  (window.subdivisions || []).forEach(r => {
+  const list = Array.isArray(window.subdivisions) ? window.subdivisions : [];
+  if (!list.length) console.warn("[Table] window.subdivisions is empty.");
+
+  list.forEach(r => {
     (groups[r.state] ||= []).push(r);
   });
 
@@ -120,20 +162,36 @@ function buildSubdivisionTable() {
  * MAPS
  ***********************/
 async function drawSubdivisionMap(svgSelector, onReady) {
+  if (!window.d3) {
+    console.error("[Map] D3 not loaded. Make sure <script src='https://d3js.org/d3.v7.min.js'></script> is present.");
+    return onReady?.();
+  }
+
   const svg = d3.select(svgSelector);
+  if (svg.empty()) {
+    console.error("[Map] SVG not found:", svgSelector);
+    return onReady?.();
+  }
+
   svg.selectAll("*").remove();
 
   const W = 860, H = 580;
   svg.attr("viewBox", `0 0 ${W} ${H}`).attr("preserveAspectRatio", "xMidYMid meet");
 
   try {
-    const geo = await loadGeoJSON(SUBDIV_GEO_URLS);
-    const features = geo.features || [];
-    const fc = { type: "FeatureCollection", features };
+    const fc = await loadGeoJSON(SUBDIV_GEO_URLS);
+    const features = fc.features || [];
+    if (!features.length) {
+      showInlineError(svg, "No features found in GeoJSON.");
+      return onReady?.();
+    }
+
     const NAME = "ST_NM"; // IMD sub-division field
 
     const projection = d3.geoMercator();
     const path = d3.geoPath().projection(projection);
+
+    // Safety: fit only on valid geometry
     projection.fitSize([W - 10, H - 10], fc);
 
     svg.selectAll("path.state")
@@ -147,13 +205,20 @@ async function drawSubdivisionMap(svgSelector, onReady) {
       .attr("fill", "#e6e6e6")
       .attr("stroke", "#222")
       .attr("stroke-width", 0.8)
+      .attr("vector-effect", "non-scaling-stroke")
       .on("mouseover", function () { d3.select(this).attr("stroke-width", 1.6); })
       .on("mouseout", function () { d3.select(this).attr("stroke-width", 0.8); });
 
-    if (typeof onReady === "function") onReady();
+    // Helpful console preview
+    console.table(
+      features.slice(0, 5).map(f => ({ ST_NM: f.properties?.[NAME] ?? "(none)" }))
+    );
+
+    onReady?.();
   } catch (e) {
-    console.error("Geo load error:", e);
-    if (typeof onReady === "function") onReady();
+    console.error("[Map] Geo load error:", e);
+    showInlineError(svg, "Failed to load subdivision map data.");
+    onReady?.();
   }
 }
 
@@ -177,8 +242,20 @@ function paintMapsFromTable() {
 /***********************
  * INIT
  ***********************/
+window.addEventListener("unhandledrejection", e => {
+  console.error("[Global] Unhandled promise rejection:", e.reason || e);
+});
+
 window.addEventListener("load", () => {
-  if (typeof updateISTDate === "function") updateISTDate(); // ensure this is the Asia/Kolkata version
+  if (typeof updateISTDate === "function") updateISTDate(); // use the Asia/Kolkata version
+
+  // Quick checks to avoid silent failures
+  if (!document.getElementById("indiaSubMapDay1")) {
+    console.error("[Init] Missing <svg id='indiaSubMapDay1'> in HTML.");
+  }
+  if (!document.getElementById("indiaSubMapDay2")) {
+    console.error("[Init] Missing <svg id='indiaSubMapDay2'> in HTML.");
+  }
 
   buildSubdivisionTable();
 
