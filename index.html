@@ -8,12 +8,12 @@
   <!-- Styles -->
   <link rel="stylesheet" href="style.css" />
 
-  <!-- Libraries (defer keeps order and runs after parse) -->
+  <!-- Libraries -->
   <script defer src="https://d3js.org/d3.v7.min.js"></script>
   <script defer src="https://unpkg.com/topojson-client@3"></script>
   <script defer src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
 
-  <!-- Your app scripts (data.js MUST come before app.js) -->
+  <!-- Data & App -->
   <script defer src="data.js"></script>
   <script defer src="app.js"></script>
 </head>
@@ -53,7 +53,7 @@
           </table>
         </div>
 
-        <!-- ONE TABLE -->
+        <!-- ONE table -->
         <h3 class="table-title" style="text-align:left;">Sub Divisions</h3>
         <table class="forecast-table subdivision-table" id="subdivision-table">
           <thead>
@@ -70,11 +70,11 @@
         </table>
       </div>
 
-      <!-- Page 2: Two subdivision maps -->
+      <!-- Page 2: Maps -->
       <div class="page page-2">
         <h3 class="map-label">Day 1 Forecast Map (Sub Division)</h3>
         <div class="map-wrapper">
-          <svg id="indiaSubMapDay1"></svg>
+          <svg id="indiaSubMapDay1" role="img" aria-label="India sub-division map day 1"></svg>
           <div class="map-legend">
             <ul>
               <li><span class="legend-swatch swatch-clear"></span> Clear Sky</li>
@@ -89,7 +89,7 @@
 
         <h3 class="map-label">Day 2 Forecast Map (Sub Division)</h3>
         <div class="map-wrapper">
-          <svg id="indiaSubMapDay2"></svg>
+          <svg id="indiaSubMapDay2" role="img" aria-label="India sub-division map day 2"></svg>
           <div class="map-legend">
             <ul>
               <li><span class="legend-swatch swatch-clear"></span> Clear Sky</li>
@@ -118,11 +118,10 @@
     <button id="downloadBtn" onclick="downloadPDF()">Download PDF</button>
   </div>
 
-  <!-- PDF download helper -->
   <script>
     function downloadPDF() {
       const el = document.getElementById("pdf-area");
-      if (!el) { alert("PDF container not found!"); return; }
+      if (!el) return alert("PDF container not found!");
       html2pdf().set({
         margin: 0.3,
         filename: "Cloud_Forecast_Bulletin.pdf",
