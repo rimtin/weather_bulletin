@@ -1,4 +1,3 @@
-
 /* === Reset & Layout === */
 * { box-sizing: border-box; margin: 0; padding: 0; }
 body { font-family: Arial, sans-serif; background: #f2f2f2; display: flex; justify-content: center; }
@@ -46,19 +45,19 @@ select { width: 100%; padding: 4px; font-size: 12px; }
   max-width: 720px;
   position: relative;
   page-break-inside: avoid;
-  background: transparent !important;
+  background: transparent;
 }
 .map-wrapper::before,
-.map-wrapper::after { display: none !important; }
+.map-wrapper::after { display: none; }
 
 /* Style ONLY the map SVGs (do not use a global `svg {}` rule) */
 .map-wrapper svg {
   width: 100%;
-  height: 280px;               /* adjust height if you want */
+  height: 280px;              /* adjust height if you want */
   display: block;
   border: 1px solid #ccc;
   margin: auto;
-  background: transparent !important;
+  background: #fff;           /* white canvas so polygons are visible */
   position: relative;
   z-index: 2;
 }
@@ -98,13 +97,14 @@ select { width: 100%; padding: 4px; font-size: 12px; }
 button { display: block; margin: 30px auto 10px; padding: 10px 20px; font-size: 14px; background: #007bff; border: none; color: #fff; border-radius: 6px; cursor: pointer; }
 button:hover { background: #0056b3; }
 
-/* Safety: ensure paths are visible regardless of other CSS */
-#indiaSubMapDay1 path.state, #indiaSubMapDay2 path.state {
-  fill: #ccc !important;
-  stroke: #333 !important;
-  stroke-width: 1px !important;
-  vector-effect: non-scaling-stroke !important;
-  opacity: 1 !important;
-  visibility: visible !important;
-  display: inline !important;
+/* === Allow JS to recolor polygons (no !important here) === */
+#indiaSubMapDay1 path.state,
+#indiaSubMapDay2 path.state {
+  fill: #e6e6e6;              /* neutral base; D3 will override */
+  stroke: #222;
+  stroke-width: 0.8px;
+  vector-effect: non-scaling-stroke;
+  opacity: 1;
+  visibility: visible;
+  display: inline;
 }
