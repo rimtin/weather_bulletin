@@ -66,6 +66,7 @@ function pickNameKey(features) {
     Object.keys(p).forEach(k => seen.add(k));
   }
   for (const key of priority) if (seen.has(key)) return key;
+  // fallback: first string-like property we find
   for (const f of features) {
     const p = f?.properties || {};
     for (const k of Object.keys(p)) if (typeof p[k] === "string" && p[k]) return k;
@@ -73,7 +74,7 @@ function pickNameKey(features) {
   return "ST_NM";
 }
 
-/** (Optional) TopoJSON -> FeatureCollection support if needed */
+/** TopoJSON → FeatureCollection support (works for normal GeoJSON too) */
 function toFeatureCollection(jsonObj) {
   if ((jsonObj && jsonObj.type === "Topology") || jsonObj?.objects) {
     const topo = jsonObj;
@@ -81,13 +82,13 @@ function toFeatureCollection(jsonObj) {
     const firstKey = Object.keys(objects).find(k => objects[k]?.geometries?.length) || Object.keys(objects)[0];
     if (!firstKey) throw new Error("TopoJSON has no objects");
     const fc = (window.topojson || topojson).feature(topo, objects[firstKey]);
-    if (!Array.isArray(fc.features)) throw new Error("TopoJSON -> FeatureCollection failed");
+    if (!Array.isArray(fc.features)) throw new Error("TopoJSON → FeatureCollection failed");
     return { type: "FeatureCollection", features: fc.features.filter(f => f && f.geometry) };
   }
   if (Array.isArray(jsonObj?.features)) {
     return { type: "FeatureCollection", features: jsonObj.features.filter(f => f && f.geometry) };
   }
-  throw new Error("Unknown Geo format (not FeatureCollection / Topology)");
+  throw new Error("Unknown geo format (not FeatureCollection / Topology)");
 }
 
 async function loadGeoJSON(urls) {
@@ -123,7 +124,6 @@ function ensureNoForecastPattern(svg) {
   let defs = svg.select("defs");
   if (defs.empty()) defs = svg.append("defs");
 
-  // Only create once
   if (svg.select(`#${cssEscape(patId)}`).empty()) {
     const pattern = defs.append("pattern")
       .attr("id", patId)
@@ -132,13 +132,11 @@ function ensureNoForecastPattern(svg) {
       .attr("height", 8)
       .attr("patternTransform", "rotate(45)");
 
-    // Base (light) background under the stripes
     pattern.append("rect")
       .attr("width", 8)
       .attr("height", 8)
       .attr("fill", "#f2f2f2");
 
-    // Vertical stroke that becomes diagonal due to rotate(45)
     pattern.append("path")
       .attr("d", "M 0 0 L 0 8")
       .attr("stroke", "#999")
@@ -252,8 +250,8 @@ async function drawSubdivisionMap(svgSelector, onReady) {
 
     projection.fitSize([W - 10, H - 10], fc);
 
-    svg.append("g")
-      .attr("class", "states")
+    // ----- FILLS layer (no stroke) -----
+    const fills = svg.append("g").attr("class", "fills")
       .selectAll("path.state")
       .data(features)
       .enter()
@@ -263,11 +261,26 @@ async function drawSubdivisionMap(svgSelector, onReady) {
       .attr("data-name", d => d.properties?.[NAME] ?? "")
       .attr("data-norm", d => canonical(d.properties?.[NAME]))
       .attr("fill", "#e6e6e6")
-      .attr("stroke", "#222")
-      .attr("stroke-width", 0.8)
+      .attr("stroke", "none")
       .attr("vector-effect", "non-scaling-stroke")
+      .on("mouseover", function () { d3.select(this).attr("stroke-width", 1.6); })
+      .on("mouseout", function () { d3.select(this).attr("stroke-width", 0); })
       .append("title")
       .text(d => d.properties?.[NAME] ?? "");
+
+    // ----- BORDERS overlay (stroke only, sits on top) -----
+    svg.append("g").attr("class", "borders")
+      .selectAll("path.border")
+      .data(features)
+      .enter()
+      .append("path")
+      .attr("class", "border")
+      .attr("d", path)
+      .attr("fill", "none")
+      .attr("stroke", "#666")
+      .attr("stroke-width", 0.6)
+      .attr("vector-effect", "non-scaling-stroke")
+      .attr("pointer-events", "none");
 
     // Tag the SVG with the pattern id for later lookup
     svg.attr("data-nf-pattern", nfPatternId);
@@ -304,8 +317,9 @@ function paintMapsFromTable() {
     const c1 = isNo1 ? (patt1 ? `url(#${patt1})` : "#f2f2f2") : ((window.forecastColors || {})[d1] || "#e6e6e6");
     const c2 = isNo2 ? (patt2 ? `url(#${patt2})` : "#f2f2f2") : ((window.forecastColors || {})[d2] || "#e6e6e6");
 
-    d3.selectAll(`#indiaSubMapDay1 path.state[data-norm='${cssEscape(id)}']`).attr("fill", c1);
-    d3.selectAll(`#indiaSubMapDay2 path.state[data-norm='${cssEscape(id)}']`).attr("fill", c2);
+    // Only color the FILLS (not the border overlay)
+    d3.selectAll(`#indiaSubMapDay1 .fills path.state[data-norm='${cssEscape(id)}']`).attr("fill", c1);
+    d3.selectAll(`#indiaSubMapDay2 .fills path.state[data-norm='${cssEscape(id)}']`).attr("fill", c2);
   });
 }
 
@@ -330,21 +344,3 @@ window.addEventListener("load", () => {
     });
   });
 });
-// Make sure legend never intercepts hover/clicks
-(function ensureLegendPassThrough(){
-  if (!document.querySelector('#hotfix-map-overlay')) {
-    const st = document.createElement('style');
-    st.id = 'hotfix-map-overlay';
-    st.textContent = `.map-legend, .map-legend * { pointer-events: none !important; }`;
-    document.head.appendChild(st);
-  }
-})();
-
-// Ensure SVG sizing even if CSS fails to load
-(function ensureSvgSizing(){
-  document.querySelectorAll('.map-wrapper svg').forEach(svg => {
-    svg.style.height = 'auto';
-    svg.style.aspectRatio = '860 / 580';
-    svg.style.minHeight = '580px';
-  });
-})();
