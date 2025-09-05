@@ -38,31 +38,21 @@ select { width: 100%; padding: 4px; font-size: 12px; }
 
 /* Map */
 .map-label { text-align: center; font-weight: bold; font-size: 14px; margin: 10px 0; }
+.map-wrapper { margin: 10px auto; max-width: 720px; position: relative; page-break-inside: avoid; }
+.map-wrapper::before, .map-wrapper::after { display: none; }
 
-/* Keep wrapper transparent and simple */
-.map-wrapper {
-  margin: 10px auto;
-  max-width: 720px;
-  position: relative;
-  page-break-inside: avoid;
-  background: transparent;
-}
-.map-wrapper::before,
-.map-wrapper::after { display: none; }
-
-/* Style ONLY the map SVGs (no global svg rule) */
+/* (only) the map SVGs */
 .map-wrapper svg {
   width: 100%;
-  height: 280px;              /* adjust height if you want */
+  height: 280px;
   display: block;
   border: 1px solid #ccc;
   margin: auto;
-  background: #fff;           /* white canvas so polygons are visible */
+  background: #fff; /* white canvas so polygons are visible */
   position: relative;
   z-index: 2;
 }
 
-/* Legend */
 .map-legend {
   position: absolute; top: 12px; right: 12px;
   background: #fff; border: 1px solid #ccc; padding: 8px 12px;
@@ -72,9 +62,9 @@ select { width: 100%; padding: 4px; font-size: 12px; }
 .map-legend ul { list-style: none; padding: 0; margin: 0; }
 .map-legend li { margin-bottom: 6px; display: flex; align-items: center; }
 .legend-swatch { width: 18px; height: 18px; border: 1.4px solid #222; margin-right: 6px; display: inline-block; border-radius: 3px; }
-.map-legend .legend-pattern { display:inline-block; width:18px; height:18px; margin-right:6px; border:1.4px solid #222; border-radius:3px; background-image: repeating-linear-gradient(45deg, #999 0, #999 1px, transparent 1px, transparent 4px); }
+.map-legend .legend-pattern { width:18px; height:18px; margin-right:6px; border:1.4px solid #222; border-radius:3px; background-image: repeating-linear-gradient(45deg, #999 0, #999 1px, transparent 1px, transparent 4px); }
 
-/* Excel palette swatches — bright (legend only) */
+/* Legend swatches (for legend only) */
 .swatch-clear    { background:#9ED1E6 !important; color:#063647; font-weight:600; }
 .swatch-low      { background:#B9DB6E !important; color:#2C4400; font-weight:600; }
 .swatch-medium   { background:#FFE93A !important; color:#4A3D00; font-weight:700; }
@@ -83,8 +73,7 @@ select { width: 100%; padding: 4px; font-size: 12px; }
 
 /* Subdivision table tweaks */
 .subdivision-table td, .subdivision-table th { text-align: left; }
-.subdivision-table td:nth-child(1),
-.subdivision-table th:nth-child(1) { text-align: center; width: 52px; }
+.subdivision-table td:nth-child(1), .subdivision-table th:nth-child(1) { text-align: center; width: 52px; }
 .subdivision-table td:nth-child(2), .subdivision-table th:nth-child(2) { width: 160px; }
 .subdivision-table td:nth-child(5), .subdivision-table th:nth-child(5) { width: 140px; }
 
@@ -94,18 +83,15 @@ select { width: 100%; padding: 4px; font-size: 12px; }
 /* Map state hover */
 .state:hover { filter: drop-shadow(0 0 3px rgba(0,0,0,0.25)); cursor: pointer; }
 
-/* Button */
+/* Download button */
 button { display: block; margin: 30px auto 10px; padding: 10px 20px; font-size: 14px; background: #007bff; border: none; color: #fff; border-radius: 6px; cursor: pointer; }
 button:hover { background: #0056b3; }
 
-/* === JS will recolor polygons; keep base neutral === */
+/* Base styling for paths. JS will override the fill. */
 #indiaSubMapDay1 path.state,
 #indiaSubMapDay2 path.state {
-  fill: #e6e6e6;              /* neutral base; D3 will override */
+  fill: #e6e6e6;
   stroke: #222;
   stroke-width: 0.8px;
   vector-effect: non-scaling-stroke;
-  opacity: 1;
-  visibility: visible;
-  display: inline;
 }
