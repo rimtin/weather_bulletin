@@ -126,7 +126,6 @@ async function drawSubdivisionMap(svgSelector, onReady){
   const svg = d3.select(svgSelector);
   svg.selectAll("*").remove();
 
-  // fixed canvas for layout; viewBox lets it scale responsively
   const W = 860, H = 580;
   svg.attr("viewBox", `0 0 ${W} ${H}`).attr("preserveAspectRatio","xMidYMid meet");
 
@@ -134,17 +133,12 @@ async function drawSubdivisionMap(svgSelector, onReady){
     const geo = await loadGeoJSON(SUBDIV_GEO_URLS);
     const features = geo.features || [];
     const fc = { type: "FeatureCollection", features };
+    const NAME = "ST_NM"; // IMD sub-division name
 
-    // your file’s name field is ST_NM (IMD sub-division name)
-    const NAME = "ST_NM";
-
-    // --- the key change: fit the projection to the data area ---
     const projection = d3.geoMercator();
     const path = d3.geoPath().projection(projection);
-    // add a small padding (10 px margin inside the SVG box)
     projection.fitSize([W - 10, H - 10], fc);
 
-    // draw polygons
     svg.selectAll("path.state")
       .data(features)
       .enter()
@@ -152,7 +146,7 @@ async function drawSubdivisionMap(svgSelector, onReady){
       .attr("class", "state")
       .attr("d", path)
       .attr("data-name", d => d.properties?.[NAME] ?? "")
-      .attr("data-id",   d => norm(d.properties?.[NAME] ?? ""))
+      .attr("data-id",   d => (d.properties?.[NAME] ?? "").toLowerCase().replace(/\s+/g,'-'))
       .attr("fill", "#e6e6e6")
       .attr("stroke", "#222")
       .attr("stroke-width", 0.8)
@@ -162,10 +156,6 @@ async function drawSubdivisionMap(svgSelector, onReady){
     if (typeof onReady === "function") onReady();
   } catch (e) {
     console.error("Geo load error:", e);
-    const msg = document.createElement("div");
-    msg.style.color = "crimson";
-    msg.textContent = "⚠️ Could not load the sub-division GeoJSON.";
-    svg.node().parentNode.appendChild(msg);
     if (typeof onReady === "function") onReady();
   }
 }
