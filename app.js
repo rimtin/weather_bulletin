@@ -163,7 +163,7 @@ function buildSubdivisionTable() {
  ***********************/
 async function drawSubdivisionMap(svgSelector, onReady) {
   if (!window.d3) {
-    console.error("[Map] D3 not loaded. Make sure <script src='https://d3js.org/d3.v7.min.js'></script> is present.");
+    console.error("[Map] D3 not loaded.");
     return onReady?.();
   }
 
@@ -175,8 +175,13 @@ async function drawSubdivisionMap(svgSelector, onReady) {
 
   svg.selectAll("*").remove();
 
+  // Give the SVG a concrete size so it can’t collapse
   const W = 860, H = 580;
-  svg.attr("viewBox", `0 0 ${W} ${H}`).attr("preserveAspectRatio", "xMidYMid meet");
+  svg
+    .attr("viewBox", `0 0 ${W} ${H}`)
+    .attr("preserveAspectRatio", "xMidYMid meet")
+    .attr("width", W)     // <— ensures visible even if CSS is weird
+    .attr("height", H);   // <— ensures visible even if CSS is weird
 
   try {
     const fc = await loadGeoJSON(SUBDIV_GEO_URLS);
@@ -186,13 +191,17 @@ async function drawSubdivisionMap(svgSelector, onReady) {
       return onReady?.();
     }
 
-    const NAME = "ST_NM"; // IMD sub-division field
-
+    const NAME = "ST_NM";
     const projection = d3.geoMercator();
     const path = d3.geoPath().projection(projection);
 
-    // Safety: fit only on valid geometry
+    // Fit only after we know we have features
     projection.fitSize([W - 10, H - 10], fc);
+
+    // Optional: background to visualize the viewBox area
+    svg.append("rect")
+      .attr("x", 0).attr("y", 0).attr("width", W).attr("height", H)
+      .attr("fill", "transparent");
 
     svg.selectAll("path.state")
       .data(features)
@@ -209,10 +218,10 @@ async function drawSubdivisionMap(svgSelector, onReady) {
       .on("mouseover", function () { d3.select(this).attr("stroke-width", 1.6); })
       .on("mouseout", function () { d3.select(this).attr("stroke-width", 0.8); });
 
-    // Helpful console preview
-    console.table(
-      features.slice(0, 5).map(f => ({ ST_NM: f.properties?.[NAME] ?? "(none)" }))
-    );
+    // Diagnostics: confirm something drew and the SVG has size
+    const bb = svg.node().getBoundingClientRect();
+    console.info("[Map] SVG size:", Math.round(bb.width), "x", Math.round(bb.height));
+    console.table(features.slice(0, 5).map(f => ({ ST_NM: f.properties?.[NAME] ?? "(none)" })));
 
     onReady?.();
   } catch (e) {
