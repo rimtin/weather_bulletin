@@ -38,6 +38,8 @@ const cssEscape = (s) => {
 /** Normalize to a stable key so small spelling/style changes still match */
 function canonical(input) {
   let s = String(input || "")
+    // normalize unicode dashes to ASCII hyphen
+    .replace(/[\u2010-\u2015]/g, "-")
     .toLowerCase()
     .replace(/\./g, "")      // remove dots (N.I. -> NI)
     .replace(/&/g, "and")    // unify ampersand
@@ -67,6 +69,49 @@ function showInlineError(svg, msg) {
     .text(msg);
 }
 
+/** Detect the property key that holds the subdivision label (prefers ST_NM) */
+function pickNameKey(features) {
+  const priority = [
+    "ST_NM","st_nm","ST_NAME","st_name","STNAME","NAME","name",
+    "SUBDIV","subdiv","SUBDIVISION","subdivision","SUB_DIV","sub_div"
+  ];
+  const seen = new Set();
+  for (const f of features) {
+    const p = f && f.properties || {};
+    Object.keys(p).forEach(k => seen.add(k));
+  }
+  for (const key of priority) {
+    if (seen.has(key)) return key;
+  }
+  // fallback: first string-like property we find
+  for (const f of features) {
+    const p = f && f.properties || {};
+    for (const k of Object.keys(p)) {
+      if (typeof p[k] === "string" && p[k]) return k;
+    }
+  }
+  return "ST_NM"; // default if nothing else
+}
+
+/** Try to coerce any JSON (GeoJSON or TopoJSON) to a valid FeatureCollection */
+function toFeatureCollection(jsonObj) {
+  // TopoJSON support
+  if ((jsonObj && jsonObj.type === "Topology") || jsonObj?.objects) {
+    const topo = jsonObj;
+    const objects = topo.objects || {};
+    const firstKey = Object.keys(objects).find(k => objects[k]?.geometries?.length) || Object.keys(objects)[0];
+    if (!firstKey) throw new Error("TopoJSON has no objects");
+    const fc = (window.topojson || topojson).feature(topo, objects[firstKey]);
+    if (!Array.isArray(fc.features)) throw new Error("TopoJSON -> FeatureCollection failed");
+    return { type: "FeatureCollection", features: fc.features.filter(f => f && f.geometry) };
+  }
+  // GeoJSON FeatureCollection
+  if (Array.isArray(jsonObj?.features)) {
+    return { type: "FeatureCollection", features: jsonObj.features.filter(f => f && f.geometry) };
+  }
+  throw new Error("Unknown Geo format (not FeatureCollection / Topology)");
+}
+
 async function loadGeoJSON(urls) {
   let lastErr;
   for (const u of urls) {
@@ -78,16 +123,15 @@ async function loadGeoJSON(urls) {
       if (!r.ok) throw new Error(`${r.status} ${r.statusText}`);
       const j = await r.json();
 
-      // Validate
-      const feats = Array.isArray(j?.features) ? j.features : [];
-      const validFeats = feats.filter(f => f && f.geometry);
-      if (!feats.length || !validFeats.length) {
-        console.warn("[GeoJSON] Loaded but empty or no valid geometries:", u);
-        throw new Error("Empty features or invalid geometry");
+      const fc = toFeatureCollection(j);
+      const feats = Array.isArray(fc.features) ? fc.features : [];
+      if (!feats.length) {
+        console.warn("[GeoJSON] Loaded but empty features:", u);
+        throw new Error("Empty features");
       }
 
-      console.info("[GeoJSON] OK:", u, "features:", feats.length, "valid:", validFeats.length);
-      return { type: "FeatureCollection", features: validFeats };
+      console.info("[GeoJSON] OK:", u, "features:", feats.length);
+      return fc;
     } catch (e) {
       console.warn("[GeoJSON] failed:", u, e);
       lastErr = e;
@@ -180,8 +224,8 @@ async function drawSubdivisionMap(svgSelector, onReady) {
   svg
     .attr("viewBox", `0 0 ${W} ${H}`)
     .attr("preserveAspectRatio", "xMidYMid meet")
-    .attr("width", W)     // <— ensures visible even if CSS is weird
-    .attr("height", H);   // <— ensures visible even if CSS is weird
+    .attr("width", W)
+    .attr("height", H);
 
   try {
     const fc = await loadGeoJSON(SUBDIV_GEO_URLS);
@@ -191,19 +235,18 @@ async function drawSubdivisionMap(svgSelector, onReady) {
       return onReady?.();
     }
 
-    const NAME = "ST_NM";
+    // Auto-detect the label key (defaults to ST_NM)
+    const NAME = pickNameKey(features);
+    console.info("[Map] Using name field:", NAME);
+
     const projection = d3.geoMercator();
     const path = d3.geoPath().projection(projection);
 
     // Fit only after we know we have features
     projection.fitSize([W - 10, H - 10], fc);
 
-    // Optional: background to visualize the viewBox area
-    svg.append("rect")
-      .attr("x", 0).attr("y", 0).attr("width", W).attr("height", H)
-      .attr("fill", "transparent");
-
-    svg.selectAll("path.state")
+    const g = svg.append("g").attr("class", "states");
+    g.selectAll("path.state")
       .data(features)
       .enter()
       .append("path")
@@ -215,13 +258,13 @@ async function drawSubdivisionMap(svgSelector, onReady) {
       .attr("stroke", "#222")
       .attr("stroke-width", 0.8)
       .attr("vector-effect", "non-scaling-stroke")
-      .on("mouseover", function () { d3.select(this).attr("stroke-width", 1.6); })
-      .on("mouseout", function () { d3.select(this).attr("stroke-width", 0.8); });
+      .append("title")
+      .text(d => d.properties?.[NAME] ?? "");
 
     // Diagnostics: confirm something drew and the SVG has size
     const bb = svg.node().getBoundingClientRect();
     console.info("[Map] SVG size:", Math.round(bb.width), "x", Math.round(bb.height));
-    console.table(features.slice(0, 5).map(f => ({ ST_NM: f.properties?.[NAME] ?? "(none)" })));
+    console.table(features.slice(0, 5).map(f => ({ NAME: f.properties?.[NAME] ?? "(none)" })));
 
     onReady?.();
   } catch (e) {
