@@ -95,3 +95,10 @@ button:hover { background: #0056b3; }
   stroke-width: 0.8px;
   vector-effect: non-scaling-stroke;
 }
+#indiaSubMapDay1,
+#indiaSubMapDay2 {
+  display: block;
+  width: 100%;
+  /* If you prefer CSS sizing instead of JS attributes, add a fixed height: */
+  min-height: 380px; /* or 580px to match JS */
+}
