@@ -32,14 +32,15 @@ function canonical(input) {
     .replace(/\s+/g, " ")    // collapse whitespace
     .trim();
 
-  // common IMD variants
+  // align to exact ST_NM spellings used in your GeoJSON
   s = s.replace(/north *interior *karnataka|n *i *karnataka/, "ni karnataka");
   s = s.replace(/south *interior *karnataka|s *i *karnataka/, "si karnataka");
-  s = s.replace(/saurashtra *and *(kutch|kachchh|kachh)/, "saurashtra and kachchh");
+  // IMPORTANT: canonicalize to "saurashtra and kachh" (one 'h'), matching ST_NM
+  s = s.replace(/saurashtra *and *(kutch|kachchh|kachh)/, "saurashtra and kachh");
   s = s.replace(/gujarat *region/, "gujarat region");
   s = s.replace(/tamil *nadu *and *puducherry/, "tamil nadu and puducherry");
 
-  return s.replace(/[^\w]+/g, "-"); // → "saurashtra-and-kachchh", "ni-karnataka", ...
+  return s.replace(/[^\w]+/g, "-"); // → "saurashtra-and-kachh", "ni-karnataka", ...
 }
 
 async function loadGeoJSON(urls) {
@@ -177,7 +178,7 @@ function paintMapsFromTable() {
  * INIT
  ***********************/
 window.addEventListener("load", () => {
-  if (typeof updateISTDate === "function") updateISTDate();
+  if (typeof updateISTDate === "function") updateISTDate(); // ensure this is the Asia/Kolkata version
 
   buildSubdivisionTable();
 
