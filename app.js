@@ -8,6 +8,8 @@ const SUBDIV_GEO_URLS = [
   "https://raw.githubusercontent.com/rimtin/weather_bulletin/main/indian_met_zones.geojson",
   "https://cdn.jsdelivr.net/gh/rimtin/weather_bulletin@main/indian_met_zones.geojson"
 ];
+
+// alias map (unused now; we canonicalize)
 const TableToGeoName = {};
 
 /***********************
@@ -60,7 +62,7 @@ async function loadGeoJSON(urls){
       if(!fc.features.length) throw new Error("Empty features");
       console.info("[GeoJSON] OK:", u, "features:", fc.features.length);
       return fc;
-    }catch(e){ console.warn("[GeoJSON] failed:", u, e); last=e; }
+    }catch(e){ console.warn("[GeoJSON] failed:", u, e); last = e; }
   }
   throw last||new Error("All URLs failed");
 }
@@ -69,7 +71,9 @@ function ensureNoForecastPattern(svg){
   const id=(svg.attr("id")||"map")+"_noForecast";
   let defs=svg.select("defs"); if(defs.empty()) defs=svg.append("defs");
   if(svg.select("#"+cssEscape(id)).empty()){
-    const p=defs.append("pattern").attr("id",id).attr("patternUnits","userSpaceOnUse").attr("width",8).attr("height",8).attr("patternTransform","rotate(45)");
+    const p=defs.append("pattern").attr("id",id)
+      .attr("patternUnits","userSpaceOnUse").attr("width",8).attr("height",8)
+      .attr("patternTransform","rotate(45)");
     p.append("rect").attr("width",8).attr("height",8).attr("fill","#f2f2f2");
     p.append("path").attr("d","M 0 0 L 0 8").attr("stroke","#999").attr("stroke-width",1);
   }
@@ -77,7 +81,7 @@ function ensureNoForecastPattern(svg){
   return id;
 }
 
-// fit using only "near India" features; then draw all features
+// generous India centroid bounds (for fitting only)
 function featuresNearIndia(features){
   const LON_MIN=60, LON_MAX=100, LAT_MIN=-5, LAT_MAX=40;
   return features.filter(f=>{
@@ -86,9 +90,61 @@ function featuresNearIndia(features){
   });
 }
 
-function setRowActive(norm,on){
+/** floating tooltip (shared) */
+const tip = (() => {
+  const el = document.createElement('div');
+  el.className = 'map-tip';
+  document.body.appendChild(el);
+  return {
+    show(html, x, y) {
+      el.innerHTML = html;
+      el.style.display = 'block';
+      const pad = 12;
+      el.style.left = Math.max(8, x + pad) + 'px';
+      el.style.top  = Math.max(8, y + pad) + 'px';
+    },
+    hide(){ el.style.display = 'none'; }
+  };
+})();
+
+function setRowActive(norm, on){
   const row=document.querySelector(`#subdivision-table-body tr[data-norm='${cssEscape(norm)}']`);
   if(row) row.classList.toggle("active-row", !!on);
+}
+
+function readSelections(norm){
+  const row=document.querySelector(`#subdivision-table-body tr[data-norm='${cssEscape(norm)}']`);
+  if(!row) return { d1:null, d2:null };
+  return {
+    d1: row.querySelector('select.day1')?.value?.trim() || null,
+    d2: row.querySelector('select.day2')?.value?.trim() || null
+  };
+}
+
+function toPaint(value, hatchId){
+  const no = !value || /select|no\s*forecast/i.test(value);
+  return no ? (hatchId ? `url(#${hatchId})` : '#f2f2f2')
+            : ((window.forecastColors||{})[value] || '#e6e6e6');
+}
+
+function addZoomUI(svg, zoom){
+  const wrap = svg.node().parentNode;
+  if(!wrap || wrap.querySelector('.zoom-ui')) return;
+  const ui = document.createElement('div');
+  ui.className='zoom-ui';
+  ui.innerHTML = `
+    <button type="button" data-act="in">+</button>
+    <button type="button" data-act="out">−</button>
+    <button type="button" data-act="reset">⟲</button>`;
+  wrap.appendChild(ui);
+  const kStep = 1.4;
+  ui.addEventListener('click', e=>{
+    const act=e.target?.getAttribute('data-act'); if(!act) return;
+    const sel=d3.select(svg.node());
+    if(act==='in')    sel.transition().duration(250).call(zoom.scaleBy, kStep);
+    if(act==='out')   sel.transition().duration(250).call(zoom.scaleBy, 1/kStep);
+    if(act==='reset') sel.transition().duration(300).call(zoom.transform, d3.zoomIdentity);
+  });
 }
 
 /***********************
@@ -102,7 +158,7 @@ function buildSubdivisionTable(){
   const groups={};
   (window.subdivisions||[]).forEach(r => (groups[r.state]??=[]).push(r));
 
-  // add a placeholder so blank = hatch
+  // Add a placeholder so blank = hatch
   const opts = ["— Select —", ...(window.forecastOptions||[])];
 
   let serial=1;
@@ -155,8 +211,8 @@ async function drawSubdivisionMap(svgSelector, onReady){
   if(svg.empty()){ console.error("[Map] SVG not found:", svgSelector); return onReady?.(); }
   svg.selectAll("*").remove();
 
-  const W=860,H=580,M=14;
-  svg.attr("viewBox",`0 0 ${W} ${H}`).attr("preserveAspectRatio","xMidYMid meet").attr("width",W).attr("height",H);
+  const W=860,H=580,PAD=14;
+  svg.attr("viewBox",`0 0 ${W} ${H}`).attr("preserveAspectRatio","xMidYMid meet"); // no fixed width/height
 
   const nfPatternId=ensureNoForecastPattern(svg);
 
@@ -171,17 +227,31 @@ async function drawSubdivisionMap(svgSelector, onReady){
     const projection=d3.geoConicEqualArea().parallels([12,33]).center([82.5,22]);
     const path=d3.geoPath().projection(projection);
     const fit=featuresNearIndia(features);
-    projection.fitExtent([[M,M],[W-M,H-M]], {type:"FeatureCollection", features: fit.length?fit:features});
+    projection.fitExtent([[PAD,PAD],[W-PAD,H-PAD]], {type:"FeatureCollection", features: fit.length?fit:features});
+
+    // Root group for zoom/pan
+    const root = svg.append("g").attr("class","viewport");
 
     // Fills
-    const fillsG=svg.append("g").attr("class","fills");
+    const fillsG=root.append("g").attr("class","fills");
     fillsG.selectAll("path.state")
       .data(features).enter().append("path")
       .attr("class","state").attr("d",path)
       .attr("data-name",d=>d.properties?.[NAME]??"")
       .attr("data-norm",d=>canonical(d.properties?.[NAME]))
-      .attr("fill","#e6e6e6").attr("stroke","none").attr("vector-effect","non-scaling-stroke")
-      .on("mouseenter",(ev,d)=>{
+      .attr("fill", `url(#${nfPatternId})`)  // default hatch
+      .attr("stroke","none").attr("vector-effect","non-scaling-stroke")
+      .on("mousemove", (ev,d)=>{
+        const norm = canonical(d.properties?.[NAME]);
+        const {d1,d2} = readSelections(norm);
+        tip.show(
+          `<div style="font-weight:700;margin-bottom:4px">${d.properties?.[NAME]??""}</div>
+           <div>Day 1: ${d1 || "<em>—</em>"}</div>
+           <div>Day 2: ${d2 || "<em>—</em>"}</div>`,
+          ev.clientX, ev.clientY
+        );
+      })
+      .on("mouseenter", (ev,d)=>{
         const id=canonical(d.properties?.[NAME]);
         d3.selectAll(
           `#indiaSubMapDay1 .borders .border[data-norm='${cssEscape(id)}'],`+
@@ -189,7 +259,8 @@ async function drawSubdivisionMap(svgSelector, onReady){
         ).attr("stroke-width",1.6).attr("stroke","#000");
         setRowActive(id,true);
       })
-      .on("mouseleave",(ev,d)=>{
+      .on("mouseleave", (ev,d)=>{
+        tip.hide();
         const id=canonical(d.properties?.[NAME]);
         d3.selectAll(
           `#indiaSubMapDay1 .borders .border[data-norm='${cssEscape(id)}'],`+
@@ -197,10 +268,15 @@ async function drawSubdivisionMap(svgSelector, onReady){
         ).attr("stroke-width",0.6).attr("stroke","#666");
         setRowActive(id,false);
       })
+      .on("click", (ev,d)=>{
+        const id=canonical(d.properties?.[NAME]);
+        const row = document.querySelector(`#subdivision-table-body tr[data-norm='${cssEscape(id)}']`);
+        if(row){ row.scrollIntoView({behavior:'smooth', block:'center'}); row.animate([{background:'#fffa9e'},{background:''}],{duration:800}); }
+      })
       .append("title").text(d=>d.properties?.[NAME]??"");
 
     // Borders overlay
-    svg.append("g").attr("class","borders")
+    root.append("g").attr("class","borders")
       .selectAll("path.border").data(features).enter().append("path")
       .attr("class","border").attr("d",path)
       .attr("fill","none").attr("stroke","#666").attr("stroke-width",0.6)
@@ -208,7 +284,14 @@ async function drawSubdivisionMap(svgSelector, onReady){
       .attr("data-name",d=>d.properties?.[NAME]??"")
       .attr("data-norm",d=>canonical(d.properties?.[NAME]));
 
-    svg.attr("data-nf-pattern", nfPatternId);
+    // Zoom/pan with UI
+    const zoom = d3.zoom()
+      .scaleExtent([1,8])
+      .translateExtent([[0,0],[W,H]])
+      .on("zoom", ev => root.attr("transform", ev.transform));
+    svg.call(zoom).on("dblclick.zoom", null);
+    addZoomUI(svg, zoom);
+
     onReady?.();
   }catch(e){
     console.error("[Map] Geo load error:", e);
@@ -227,14 +310,11 @@ function paintMapsFromTable(){
 
   rows.forEach(row=>{
     const id=row.dataset.norm;
-    const v1=row.querySelector("select.day1")?.value?.trim();
-    const v2=row.querySelector("select.day2")?.value?.trim();
+    const v1=row.querySelector("select.day1")?.value?.trim() || null;
+    const v2=row.querySelector("select.day2")?.value?.trim() || null;
 
-    const no1=!v1 || /select/i.test(v1) || /no\s*forecast/i.test(v1);
-    const no2=!v2 || /select/i.test(v2) || /no\s*forecast/i.test(v2);
-
-    const c1=no1 ? (patt1?`url(#${patt1})`:"#f2f2f2") : ((window.forecastColors||{})[v1]||"#e6e6e6");
-    const c2=no2 ? (patt2?`url(#${patt2})`:"#f2f2f2") : ((window.forecastColors||{})[v2]||"#e6e6e6");
+    const c1 = toPaint(v1, patt1);
+    const c2 = toPaint(v2, patt2);
 
     d3.selectAll(`#indiaSubMapDay1 .fills path.state[data-norm='${cssEscape(id)}']`).attr("fill", c1);
     d3.selectAll(`#indiaSubMapDay2 .fills path.state[data-norm='${cssEscape(id)}']`).attr("fill", c2);
@@ -244,11 +324,13 @@ function paintMapsFromTable(){
 /***********************
  * INIT
  ***********************/
+window.addEventListener("unhandledrejection", e => console.error("[Global] Unhandled promise rejection:", e.reason || e));
+
 window.addEventListener("load", ()=>{
   if(typeof updateISTDate==="function") updateISTDate();
   buildSubdivisionTable();
 
-  // draw maps then paint initial (so selects immediately color the map)
+  // draw both maps, then paint once so colors appear immediately
   drawSubdivisionMap("#indiaSubMapDay1", ()=>{
     drawSubdivisionMap("#indiaSubMapDay2", ()=>{
       paintMapsFromTable();
