@@ -158,7 +158,7 @@ function buildSubdivisionTable(){
   const groups={};
   (window.subdivisions||[]).forEach(r => (groups[r.state]??=[]).push(r));
 
-  // Add a placeholder so blank = hatch
+  // placeholder so blank = hatch
   const opts = ["— Select —", ...(window.forecastOptions||[])];
 
   let serial=1;
@@ -181,7 +181,6 @@ function buildSubdivisionTable(){
     });
   });
 
-  // paint when a select changes
   tbody.querySelectorAll("select").forEach(sel=>sel.addEventListener("change", paintMapsFromTable));
 
   // table → map hover
@@ -203,7 +202,7 @@ function buildSubdivisionTable(){
 }
 
 /***********************
- * MAPS
+ * MAPS (clamped pan/zoom, centered fit)
  ***********************/
 async function drawSubdivisionMap(svgSelector, onReady){
   if(!window.d3){ console.error("[Map] D3 not loaded."); return onReady?.(); }
@@ -211,7 +210,7 @@ async function drawSubdivisionMap(svgSelector, onReady){
   if(svg.empty()){ console.error("[Map] SVG not found:", svgSelector); return onReady?.(); }
   svg.selectAll("*").remove();
 
-  const W=860,H=580,PAD=14;
+  const W=860, H=580, PAD=14; // visual padding
   svg.attr("viewBox",`0 0 ${W} ${H}`).attr("preserveAspectRatio","xMidYMid meet"); // no fixed width/height
 
   const nfPatternId=ensureNoForecastPattern(svg);
@@ -223,23 +222,28 @@ async function drawSubdivisionMap(svgSelector, onReady){
 
     const NAME=pickNameKey(features);
 
-    // Proportion-correct projection + padded fit
+    // proportion-correct projection + padded fit
     const projection=d3.geoConicEqualArea().parallels([12,33]).center([82.5,22]);
     const path=d3.geoPath().projection(projection);
     const fit=featuresNearIndia(features);
-    projection.fitExtent([[PAD,PAD],[W-PAD,H-PAD]], {type:"FeatureCollection", features: fit.length?fit:features});
+    const fitFC = {type:"FeatureCollection", features: fit.length?fit:features};
+    projection.fitExtent([[PAD,PAD],[W-PAD,H-PAD]], fitFC);
+
+    // clamp translate extent to projected bounds (+ small margin)
+    const b = path.bounds(fitFC);
+    const clamp = [[Math.max(0, b[0][0]-8), Math.max(0, b[0][1]-8)],
+                   [Math.min(W, b[1][0]+8), Math.min(H, b[1][1]+8)]];
 
     // Root group for zoom/pan
     const root = svg.append("g").attr("class","viewport");
 
-    // Fills
-    const fillsG=root.append("g").attr("class","fills");
-    fillsG.selectAll("path.state")
-      .data(features).enter().append("path")
+    // FILLS (default hatch)
+    root.append("g").attr("class","fills")
+      .selectAll("path.state").data(features).enter().append("path")
       .attr("class","state").attr("d",path)
       .attr("data-name",d=>d.properties?.[NAME]??"")
       .attr("data-norm",d=>canonical(d.properties?.[NAME]))
-      .attr("fill", `url(#${nfPatternId})`)  // default hatch
+      .attr("fill", `url(#${nfPatternId})`)
       .attr("stroke","none").attr("vector-effect","non-scaling-stroke")
       .on("mousemove", (ev,d)=>{
         const norm = canonical(d.properties?.[NAME]);
@@ -270,12 +274,12 @@ async function drawSubdivisionMap(svgSelector, onReady){
       })
       .on("click", (ev,d)=>{
         const id=canonical(d.properties?.[NAME]);
-        const row = document.querySelector(`#subdivision-table-body tr[data-norm='${cssEscape(id)}']`);
-        if(row){ row.scrollIntoView({behavior:'smooth', block:'center'}); row.animate([{background:'#fffa9e'},{background:''}],{duration:800}); }
+        const row=document.querySelector(`#subdivision-table-body tr[data-norm='${cssEscape(id)}']`);
+        if(row){ row.scrollIntoView({behavior:'smooth',block:'center'}); row.animate([{background:'#fffa9e'},{background:''}],{duration:800}); }
       })
       .append("title").text(d=>d.properties?.[NAME]??"");
 
-    // Borders overlay
+    // BORDERS overlay
     root.append("g").attr("class","borders")
       .selectAll("path.border").data(features).enter().append("path")
       .attr("class","border").attr("d",path)
@@ -284,10 +288,10 @@ async function drawSubdivisionMap(svgSelector, onReady){
       .attr("data-name",d=>d.properties?.[NAME]??"")
       .attr("data-norm",d=>canonical(d.properties?.[NAME]));
 
-    // Zoom/pan with UI
+    // Zoom/pan clamped to bounds
     const zoom = d3.zoom()
       .scaleExtent([1,8])
-      .translateExtent([[0,0],[W,H]])
+      .translateExtent(clamp)
       .on("zoom", ev => root.attr("transform", ev.transform));
     svg.call(zoom).on("dblclick.zoom", null);
     addZoomUI(svg, zoom);
@@ -330,10 +334,17 @@ window.addEventListener("load", ()=>{
   if(typeof updateISTDate==="function") updateISTDate();
   buildSubdivisionTable();
 
-  // draw both maps, then paint once so colors appear immediately
   drawSubdivisionMap("#indiaSubMapDay1", ()=>{
     drawSubdivisionMap("#indiaSubMapDay2", ()=>{
       paintMapsFromTable();
     });
   });
+
+  // keep fit centered if wrapper resizes
+  const wrap = document.querySelector(".map-wrapper") || document.body;
+  new ResizeObserver(() => {
+    drawSubdivisionMap("#indiaSubMapDay1", () =>
+      drawSubdivisionMap("#indiaSubMapDay2", () => paintMapsFromTable())
+    );
+  }).observe(wrap);
 });
