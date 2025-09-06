@@ -123,3 +123,11 @@ button:hover { background: #0056b3; }
   width: 100%;
   min-height: 580px;
 }
+
+.map-wrapper svg{ width:100%; height:auto; aspect-ratio:860/580; border:1px solid #ccc; background:#fff; }
+.map-legend, .map-legend *{ pointer-events:none; }
+.active-row{ background:#e9f2ff !important; }
+.map-tip{ position:fixed; pointer-events:none; display:none; background:#fff; border:1px solid #bbb; border-radius:6px; padding:6px 8px; font-size:12px; box-shadow:0 2px 8px rgba(0,0,0,.15); z-index:9999; }
+.zoom-ui{ position:absolute; left:12px; top:12px; z-index:11; display:flex; flex-direction:column; gap:6px; }
+.zoom-ui button{ width:28px; height:28px; border:1px solid #888; background:#fff; border-radius:4px; font-weight:700; line-height:1; cursor:pointer; }
+.zoom-ui button:hover{ background:#f1f1f1; }
