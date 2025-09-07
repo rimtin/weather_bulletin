@@ -1,15 +1,7 @@
-/****************************
- * SOURCES (states TopoJSON + subdivision GeoJSON fallback)
- ****************************/
-const TOPO_URLS = [
-  "india.json",
-  "assets/india.json",
-  "https://rimtin.github.io/weather_bulletin/india.json",
-  "https://raw.githubusercontent.com/rimtin/weather_bulletin/main/india.json",
-  "https://cdn.jsdelivr.net/gh/rimtin/weather_bulletin@main/india.json"
-];
-
-const GEOJSON_URLS = [
+/***********************
+ * CONFIG
+ ***********************/
+const SUBDIV_GEO_URLS = [
   "indian_met_zones.geojson",
   "assets/indian_met_zones.geojson",
   "https://rimtin.github.io/weather_bulletin/indian_met_zones.geojson",
@@ -17,264 +9,258 @@ const GEOJSON_URLS = [
   "https://cdn.jsdelivr.net/gh/rimtin/weather_bulletin@main/indian_met_zones.geojson"
 ];
 
-/****************************
- * RUNTIME CACHES
- ****************************/
-let __FC = null;                 // loaded FeatureCollection (states or sub-divisions)
-let __NAME_KEY = "st_nm";        // detected name property
-window.stateCentroids = window.stateCentroids || {};
-window.actualStateList = (window.states || []).slice(); // allowed list drives main table
+// map of table label → GeoJSON label (kept empty; we canonicalize)
+const TableToGeoName = {};
 
-/****************************
+/***********************
  * HELPERS
- ****************************/
-const cssEscape = s =>
-  (window.CSS && CSS.escape) ? CSS.escape(String(s ?? "")) : String(s ?? "").replace(/'/g,"\\'").replace(/"/g,'\\"');
+ ***********************/
+const cssEscape = (s) => {
+  s = String(s ?? "");
+  if (window.CSS && typeof CSS.escape === "function") return CSS.escape(s);
+  return s.replace(/'/g, "\\'").replace(/"/g, '\\"');
+};
 
-const byId = id => document.getElementById(id);
+// Normalize names for matching
+function canonical(input) {
+  let s = String(input || "")
+    .replace(/[\u2010-\u2015]/g, "-")
+    .toLowerCase()
+    .replace(/\./g, "")
+    .replace(/&/g, "and")
+    .replace(/\s+/g, " ")
+    .trim();
 
-function pickNameKey(features){
-  const pref = ["st_nm","ST_NM","name","NAME","st_name","ST_NAME","SUBDIV","subdiv"];
+  s = s.replace(/north *interior *karnataka|n *i *karnataka/, "ni karnataka");
+  s = s.replace(/south *interior *karnataka|s *i *karnataka/, "si karnataka");
+  s = s.replace(/saurashtra *and *(kutch|kachchh|kachh)/, "saurashtra and kachh");
+  s = s.replace(/gujarat *region/, "gujarat region");
+  s = s.replace(/tamil *nadu *and *puducherry/, "tamil nadu and puducherry");
+  s = s.replace(/konkan *and *goa/, "konkan and goa");
+  return s.replace(/[^\w]+/g, "-");
+}
+
+function showInlineError(svg, msg) {
+  const W = 860, H = 580;
+  svg.attr("viewBox", `0 0 ${W} ${H}`).attr("preserveAspectRatio", "xMidYMid meet");
+  svg.append("text").attr("x", W/2).attr("y", H/2)
+    .attr("text-anchor", "middle").attr("font-size", 16).attr("fill", "#aa0000").text(msg);
+}
+
+// choose the name field (defaults to ST_NM)
+function pickNameKey(features) {
+  const pref = ["ST_NM","st_nm","NAME","name"];
   const seen = new Set();
   features.forEach(f => Object.keys(f.properties||{}).forEach(k => seen.add(k)));
   for (const k of pref) if (seen.has(k)) return k;
   for (const f of features) for (const k of Object.keys(f.properties||{}))
     if (typeof f.properties[k] === "string") return k;
-  return "st_nm";
+  return "ST_NM";
 }
 
-function ensureHatch(svg){
-  const id="diagonalHatch";
-  if (!svg.select("#"+id).empty()) return id;
-  let defs = svg.select("defs"); if (defs.empty()) defs = svg.append("defs");
-  const p = defs.append("pattern").attr("id",id)
-    .attr("patternUnits","userSpaceOnUse").attr("width",6).attr("height",6);
-  p.append("path").attr("d","M0,0 l6,6").attr("stroke","#999").attr("stroke-width",1);
-  return id;
-}
-
-/****************************
- * LOADERS (Topo first, then GeoJSON)
- ****************************/
-async function tryFetchJSON(u){
-  const url = u + (u.includes("?")?"&":"?") + "v=" + Date.now();
-  const r = await fetch(url, { cache: "no-store" });
-  if (!r.ok) throw new Error(`${r.status} ${r.statusText}`);
-  return r.json();
-}
-
-async function loadAnyIndia(){
-  if (__FC) return __FC;
-
-  // 1) Try TopoJSON (states)
-  for (const u of TOPO_URLS){
-    try{
-      const topo = await tryFetchJSON(u);
-      const obj = topo.objects?.states || Object.values(topo.objects||{})[0];
-      if (!obj) throw new Error("No 'states' object");
-      const fc = (window.topojson||topojson).feature(topo, obj);
-      if (!Array.isArray(fc.features) || !fc.features.length) throw new Error("Empty features");
-      __NAME_KEY = pickNameKey(fc.features);
-      __FC = { type:"FeatureCollection", features: fc.features };
-      console.info("[Map] Using TopoJSON (states). NAME_KEY:", __NAME_KEY);
-      return __FC;
-    }catch(e){ console.warn("[Topo] failed:", u, e.message||e); }
-  }
-
-  // 2) Fallback to your sub-division GeoJSON
-  for (const u of GEOJSON_URLS){
-    try{
-      const gj = await tryFetchJSON(u);
-      const feats = (gj.features||[]).filter(f => f && f.geometry);
+// load GeoJSON with fallbacks
+async function loadGeoJSON(urls) {
+  let lastErr;
+  for (const u of urls) {
+    try {
+      const url = u + (u.includes("?") ? "&" : "?") + "v=" + Date.now();
+      const r = await fetch(url, { cache: "no-store" });
+      if (!r.ok) throw new Error(`${r.status} ${r.statusText}`);
+      const j = await r.json();
+      const feats = (j.features || []).filter(f => f && f.geometry);
       if (!feats.length) throw new Error("Empty features");
-      __NAME_KEY = pickNameKey(feats);
-      __FC = { type:"FeatureCollection", features: feats };
-      console.info("[Map] Using GeoJSON (sub-divisions). NAME_KEY:", __NAME_KEY);
-      return __FC;
-    }catch(e){ console.warn("[GeoJSON] failed:", u, e.message||e); }
+      return { type: "FeatureCollection", features: feats };
+    } catch (e) {
+      console.warn("[GeoJSON] failed:", u, e);
+      lastErr = e;
+    }
   }
-
-  throw new Error("Could not load india.json or indian_met_zones.geojson");
+  throw lastErr || new Error("All URLs failed");
 }
 
-/****************************
- * DRAW ONE MAP into your existing SVG ids
- ****************************/
-async function drawIndiaMap(svgId, dayTag){
-  const svg = d3.select("#"+svgId);
-  if (svg.empty()){ console.error("Missing SVG:", svgId); return; }
+// make a diagonal hatch pattern for "No Forecast"
+function ensureNoForecastPattern(svg) {
+  const svgId = svg.attr("id") || "map";
+  const patId = `${svgId}_noForecast`;
+  let defs = svg.select("defs"); if (defs.empty()) defs = svg.append("defs");
+  if (svg.select(`#${cssEscape(patId)}`).empty()) {
+    const p = defs.append("pattern").attr("id", patId)
+      .attr("patternUnits", "userSpaceOnUse").attr("width", 8).attr("height", 8).attr("patternTransform", "rotate(45)");
+    p.append("rect").attr("width", 8).attr("height", 8).attr("fill", "#f2f2f2");
+    p.append("path").attr("d", "M 0 0 L 0 8").attr("stroke", "#999").attr("stroke-width", 1);
+  }
+  svg.attr("data-nf-pattern", patId);
+  return patId;
+}
+
+/***********************
+ * TABLE
+ ***********************/
+function buildSubdivisionTable() {
+  const tbody = document.getElementById("subdivision-table-body");
+  if (!tbody) { console.error("[Table] Missing #subdivision-table-body"); return; }
+  tbody.innerHTML = "";
+
+  // group rows by state
+  const groups = {};
+  (window.subdivisions || []).forEach(r => (groups[r.state] ||= []).push(r));
+
+  let serial = 1;
+  Object.keys(groups).forEach(state => {
+    const rows = groups[state];
+    rows.forEach((row, i) => {
+      const tr = document.createElement("tr");
+      tr.dataset.state = state;
+      tr.dataset.subdiv = row.name;
+      tr.dataset.norm = canonical(TableToGeoName[row.name] || row.name);
+      tr.innerHTML = `
+        <td>${serial++}</td>
+        ${i === 0 ? `<td rowspan="${rows.length}">${state}</td>` : ""}
+        <td>${row.name}</td>
+        <td contenteditable="true"></td>
+        <td><select class="day1">${(window.forecastOptions || []).map(o => `<option>${o}</option>`).join("")}</select></td>
+        <td><select class="day2">${(window.forecastOptions || []).map(o => `<option>${o}</option>`).join("")}</select></td>
+      `;
+      tbody.appendChild(tr);
+    });
+  });
+
+  // change → recolor
+  tbody.querySelectorAll("select").forEach(sel =>
+    sel.addEventListener("change", paintMapsFromTable)
+  );
+
+  // hover sync table → map
+  tbody.querySelectorAll("tr").forEach(tr => {
+    const id = tr.dataset.norm;
+    tr.addEventListener("mouseenter", () => {
+      d3.selectAll(
+        `#indiaSubMapDay1 .borders .border[data-norm='${cssEscape(id)}'],`+
+        `#indiaSubMapDay2 .borders .border[data-norm='${cssEscape(id)}']`
+      ).attr("stroke-width", 1.6).attr("stroke", "#000");
+    });
+    tr.addEventListener("mouseleave", () => {
+      d3.selectAll(
+        `#indiaSubMapDay1 .borders .border[data-norm='${cssEscape(id)}'],`+
+        `#indiaSubMapDay2 .borders .border[data-norm='${cssEscape(id)}']`
+      ).attr("stroke-width", 0.6).attr("stroke", "#666");
+    });
+  });
+}
+
+/***********************
+ * MAPS
+ ***********************/
+async function drawSubdivisionMap(svgSelector, onReady) {
+  const svg = d3.select(svgSelector);
+  if (svg.empty()) { console.error("[Map] SVG not found:", svgSelector); return onReady?.(); }
   svg.selectAll("*").remove();
 
-  // size & background (keeps proportions)
-  const W=860, H=580;
-  svg.attr("viewBox",`0 0 ${W} ${H}`).attr("preserveAspectRatio","xMidYMid meet");
+  const W = 860, H = 580;
+  svg.attr("viewBox", `0 0 ${W} ${H}`).attr("preserveAspectRatio", "xMidYMid meet");
 
-  const hatch = ensureHatch(svg);
+  const nfPatternId = ensureNoForecastPattern(svg);
 
-  try{
-    const fc = await loadAnyIndia();
-    const features = fc.features;
+  try {
+    const fcAll = await loadGeoJSON(SUBDIV_GEO_URLS);
+    const feats = fcAll.features || [];
+    if (!feats.length) { showInlineError(svg, "No features found."); return onReady?.(); }
 
-    // Fallback allowed list = all names if none provided
-    if (!window.actualStateList.length){
-      window.actualStateList = [...new Set(features.map(f => f.properties?.[__NAME_KEY]).filter(Boolean))];
-    }
+    const NAME = pickNameKey(feats);
 
-    // Your requested Mercator numbers
-    const projection = d3.geoMercator().scale(850).center([89.8,21.5]).translate([430,290]);
+    // keep ONLY the 20 sub-divisions we want
+    const wanted = new Set((window.subdivisions || []).map(r => canonical(r.name)));
+    const features = feats.filter(f => wanted.has(canonical(f.properties?.[NAME])));
+
+    // conic equal area (better India shape) and fit
+    const projection = d3.geoConicEqualArea().parallels([12,33]).center([82.5,22]);
     const path = d3.geoPath().projection(projection);
+    projection.fitSize([W - 12, H - 12], { type: "FeatureCollection", features });
 
-    const root = svg.append("g").attr("class","viewport");
-
-    root.append("g").attr("class","states")
-      .selectAll("path.state").data(features).enter().append("path")
-      .attr("class","state").attr("d", path)
-      .attr("id", d => d.properties?.[__NAME_KEY] ?? "")
-      .attr("data-map", dayTag)
-      .attr("stroke","#333").attr("stroke-width",1)
-      .attr("fill", d => {
-        const nm = d.properties?.[__NAME_KEY] ?? "";
-        return (window.actualStateList||[]).includes(nm) ? "#ccc" : `url(#${hatch})`;
+    // Fills
+    const fillsG = svg.append("g").attr("class", "fills");
+    fillsG.selectAll("path.state")
+      .data(features).enter().append("path")
+      .attr("class", "state")
+      .attr("d", path)
+      .attr("data-name", d => d.properties?.[NAME] ?? "")
+      .attr("data-norm", d => canonical(d.properties?.[NAME]))
+      .attr("fill", "#e6e6e6")
+      .attr("stroke", "none")
+      .on("mouseenter", function (event, d) {
+        const id = canonical(d.properties?.[NAME]);
+        d3.selectAll(
+          `#indiaSubMapDay1 .borders .border[data-norm='${cssEscape(id)}'],`+
+          `#indiaSubMapDay2 .borders .border[data-norm='${cssEscape(id)}']`
+        ).attr("stroke-width", 1.6).attr("stroke", "#000");
       })
-      .on("mouseover", function(){ d3.select(this).attr("stroke-width",2.5); })
-      .on("mouseout",  function(){ d3.select(this).attr("stroke-width",1); });
+      .on("mouseleave", function (event, d) {
+        const id = canonical(d.properties?.[NAME]);
+        d3.selectAll(
+          `#indiaSubMapDay1 .borders .border[data-norm='${cssEscape(id)}'],`+
+          `#indiaSubMapDay2 .borders .border[data-norm='${cssEscape(id)}']`
+        ).attr("stroke-width", 0.6).attr("stroke", "#666");
+      })
+      .append("title").text(d => d.properties?.[NAME] ?? "");
 
-    // centroid cache for icons
-    features.forEach(f => {
-      const nm = f.properties?.[__NAME_KEY]; if(!nm) return;
-      window.stateCentroids[nm] = path.centroid(f);
-    });
+    // Borders overlay
+    const bordersG = svg.append("g").attr("class", "borders");
+    bordersG.selectAll("path.border")
+      .data(features).enter().append("path")
+      .attr("class", "border")
+      .attr("d", path)
+      .attr("fill", "none")
+      .attr("stroke", "#666")
+      .attr("stroke-width", 0.6)
+      .attr("pointer-events", "none")
+      .attr("data-name", d => d.properties?.[NAME] ?? "")
+      .attr("data-norm", d => canonical(d.properties?.[NAME]));
 
-    // After second map renders, build tables + first paint
-    if (svgId === "indiaSubMapDay2"){
-      ensureMainForecastTable();
-      initializeForecastTable();
-      addTableHoverSync();
-      updateMapColors();
-      updateMapIcons();
-      // your subdivision table stays as-is (already in HTML; use window.subdivisions)
-    }
-  }catch(e){
-    console.error("[Map] draw error:", e);
-    alert("Map data could not be loaded. See console for details.");
+    svg.attr("data-nf-pattern", nfPatternId);
+
+    onReady?.();
+  } catch (e) {
+    console.error("[Map] Geo load error:", e);
+    showInlineError(svg, "Failed to load subdivision map data.");
+    onReady?.();
   }
 }
 
-/****************************
- * MAIN FORECAST TABLE (auto-create if missing)
- ****************************/
-function ensureMainForecastTable(){
-  if (byId("forecast-table-body")) return;
-  const host = document.querySelector("#pdf-area") || document.body;
-  const h3 = document.createElement("h3");
-  h3.textContent = "State / Sub-division Forecast";
-  h3.style.margin = "16px 0 6px";
-  const table = document.createElement("table");
-  table.className = "forecast-table";
-  table.innerHTML = `
-    <thead><tr>
-      <th>S. No.</th><th>Name</th><th>Day 1</th><th>Day 2</th>
-    </tr></thead>
-    <tbody id="forecast-table-body"></tbody>`;
-  host.appendChild(h3); host.appendChild(table);
-}
+/***********************
+ * COLOR FROM TABLE
+ ***********************/
+function paintMapsFromTable() {
+  const rows = document.querySelectorAll("#subdivision-table-body tr");
+  const patt1 = document.getElementById("indiaSubMapDay1")?.getAttribute("data-nf-pattern");
+  const patt2 = document.getElementById("indiaSubMapDay2")?.getAttribute("data-nf-pattern");
 
-function initializeForecastTable(){
-  const tbody = byId("forecast-table-body");
-  if (!tbody) return;
+  rows.forEach(row => {
+    const id = row.dataset.norm;
+    const d1 = row.querySelector("select.day1")?.value?.trim();
+    const d2 = row.querySelector("select.day2")?.value?.trim();
 
-  const fresh = tbody.cloneNode(false);
-  tbody.parentNode.replaceChild(fresh, tbody);
+    const isNo1 = !d1 || /select|no\s*forecast/i.test(d1);
+    const isNo2 = !d2 || /select|no\s*forecast/i.test(d2);
 
-  const list = window.actualStateList.slice().sort((a,b)=>a.localeCompare(b));
-  const options = (window.forecastOptions||[]).map(o=>`<option value="${o}">${o}</option>`).join("");
-  let serial = 1;
+    const c1 = isNo1 ? (patt1 ? `url(#${patt1})` : "#f2f2f2") : ((window.forecastColors || {})[d1] || "#e6e6e6");
+    const c2 = isNo2 ? (patt2 ? `url(#${patt2})` : "#f2f2f2") : ((window.forecastColors || {})[d2] || "#e6e6e6");
 
-  list.forEach(name=>{
-    const tr = document.createElement("tr");
-    tr.setAttribute("data-name", name);
-    tr.innerHTML = `
-      <td>${serial++}</td>
-      <td>${name}</td>
-      <td><select class="sel day1"><option value="">— Select —</option>${options}</select></td>
-      <td><select class="sel day2"><option value="">— Select —</option>${options}</select></td>`;
-    fresh.appendChild(tr);
-  });
-
-  fresh.querySelectorAll("select.sel").forEach(sel=>{
-    sel.addEventListener("change", ()=>{ updateMapColors(); updateMapIcons(); });
+    d3.selectAll(`#indiaSubMapDay1 .fills path.state[data-norm='${cssEscape(id)}']`).attr("fill", c1);
+    d3.selectAll(`#indiaSubMapDay2 .fills path.state[data-norm='${cssEscape(id)}']`).attr("fill", c2);
   });
 }
 
-/****************************
- * HOVER SYNC (table ↔ both maps)
- ****************************/
-function addTableHoverSync(){
-  const tbody = byId("forecast-table-body");
-  if (!tbody) return;
-  tbody.querySelectorAll("tr").forEach(tr=>{
-    const nm = tr.getAttribute("data-name");
-    tr.addEventListener("mouseenter", ()=>{ d3.selectAll(`[id='${cssEscape(nm)}']`).attr("stroke-width",2.5); });
-    tr.addEventListener("mouseleave", ()=>{ d3.selectAll(`[id='${cssEscape(nm)}']`).attr("stroke-width",1); });
-  });
-}
-
-/****************************
- * COLORING
- ****************************/
-function updateMapColors(){
-  const tbd = byId("forecast-table-body"); if(!tbd) return;
-  const colorOf = v => (window.forecastColors||{})[v] || "#ccc";
-
-  tbd.querySelectorAll("tr").forEach(tr=>{
-    const nm = tr.getAttribute("data-name");
-    const v1 = tr.querySelector(".day1")?.value || "";
-    const v2 = tr.querySelector(".day2")?.value || "";
-    d3.selectAll(`[id='${cssEscape(nm)}'][data-map='indiaSubMapDay1']`).attr("fill", colorOf(v1));
-    d3.selectAll(`[id='${cssEscape(nm)}'][data-map='indiaSubMapDay2']`).attr("fill", colorOf(v2));
-  });
-}
-
-/****************************
- * ICONS (emoji text)
- ****************************/
-function updateMapIcons(){
-  const icons = window.forecastIcons || {};
-  const tbd = byId("forecast-table-body"); if(!tbd) return;
-
-  d3.selectAll(".forecast-icon").remove();
-
-  tbd.querySelectorAll("tr").forEach(tr=>{
-    const nm = tr.getAttribute("data-name");
-    const [cx, cy] = window.stateCentroids[nm] || [];
-    if (cx == null) return;
-
-    const v1 = tr.querySelector(".day1")?.value || "";
-    const v2 = tr.querySelector(".day2")?.value || "";
-    const i1 = icons[v1] || "";
-    const i2 = icons[v2] || "";
-
-    if (i1){
-      d3.select("#indiaSubMapDay1 .viewport").append("text")
-        .attr("class","forecast-icon").attr("x",cx).attr("y",cy)
-        .attr("text-anchor","middle").attr("alignment-baseline","middle")
-        .attr("font-size",18).text(i1);
-    }
-    if (i2){
-      d3.select("#indiaSubMapDay2 .viewport").append("text")
-        .attr("class","forecast-icon").attr("x",cx).attr("y",cy)
-        .attr("text-anchor","middle").attr("alignment-baseline","middle")
-        .attr("font-size",18).text(i2);
-    }
-  });
-}
-
-/****************************
- * BOOTSTRAP
- ****************************/
-window.addEventListener("load", ()=>{
+/***********************
+ * INIT
+ ***********************/
+window.addEventListener("load", () => {
   if (typeof updateISTDate === "function") updateISTDate();
-  drawIndiaMap("indiaSubMapDay1","indiaSubMapDay1").then(()=>{
-    drawIndiaMap("indiaSubMapDay2","indiaSubMapDay2");
+
+  buildSubdivisionTable();
+
+  drawSubdivisionMap("#indiaSubMapDay1", () => {
+    drawSubdivisionMap("#indiaSubMapDay2", () => {
+      paintMapsFromTable(); // initial paint
+    });
   });
 });
