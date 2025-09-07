@@ -247,6 +247,26 @@ function paintMapsFromTable() {
   });
 }
 
+// --- Projection & fit (clean zoom control) ---
+const projection = d3.geoMercator();
+const path = d3.geoPath().projection(projection);
+
+// Use only features near India to compute the fit (prevents outliers)
+// then fit with a fixed padding box
+const PAD = 18;                             // pixels of padding around India
+const near = featuresNearIndia(features);
+const fitFC = { type: "FeatureCollection", features: near.length ? near : features };
+
+projection.fitExtent([[PAD, PAD], [W - PAD, H - PAD]], fitFC);
+
+// OPTIONAL fine-tune zoom level in one place:
+//   > 1.00 => zoom in (bigger India)
+//   < 1.00 => zoom out (smaller India)
+const SCALE_BOOST = 1.12;                   // try 1.12 if it looks too “zoomed out”
+projection
+  .scale(projection.scale() * SCALE_BOOST)
+  .translate([W / 2, H / 2]);               // keep centered after scaling
+
 /***********************
  * INIT
  ***********************/
