@@ -6,65 +6,53 @@ window.forecastColors = {
   "High Cloud Cover": "#E69536",
   "Overcast Cloud Cover": "#FF4D4D"
 };
-
-// Extra labels that map to the hatched "No Forecast" fill in app.js
-window.noForecastLabel = "No Forecast";
-window.placeholderLabel = "— Select —";
-
-// Order: placeholder (default) → color options → explicit No Forecast
-window.forecastOptions = [
-  window.placeholderLabel,
-  ...Object.keys(window.forecastColors),
-  window.noForecastLabel
-];
+window.forecastOptions = Object.keys(window.forecastColors);
 
 // ---- SUBDIVISION ROWS (global) ----
-// IMPORTANT: Keep names EXACTLY as in your GeoJSON ST_NM (case & spelling).
+// IMPORTANT: names MUST match your GeoJSON "ST_NM" field exactly.
 window.subdivisions = [
-  // Punjab
+  // Punjab (1)
   { state: "Punjab",            name: "Punjab" },
 
-  // Rajasthan
+  // Rajasthan (2)
   { state: "Rajasthan",         name: "West Rajasthan" },
   { state: "Rajasthan",         name: "East Rajasthan" },
 
-  // Gujarat
-  { state: "Gujarat",           name: "Saurashtra & Kachh" },     // exact ST_NM
-  { state: "Gujarat",           name: "Gujarat region" },         // exact case
+  // Gujarat (2)
+  { state: "Gujarat",           name: "Saurashtra & Kachh" },
+  { state: "Gujarat",           name: "Gujarat Region" },
 
-  // Uttar Pradesh
+  // Uttar Pradesh (2)
   { state: "Uttar Pradesh",     name: "West Uttar Pradesh" },
   { state: "Uttar Pradesh",     name: "East Uttar Pradesh" },
 
-  // Bihar
-  { state: "Bihar",             name: "Bihar" },
-
-  // Madhya Pradesh
+  // Madhya Pradesh (2)
   { state: "Madhya Pradesh",    name: "West Madhya Pradesh" },
   { state: "Madhya Pradesh",    name: "East Madhya Pradesh" },
 
-  // Chhattisgarh
+  // Chhattisgarh (1)
   { state: "Chhattisgarh",      name: "Chhattisgarh" },
 
-  // Maharashtra
+  // Maharashtra (4)
   { state: "Maharashtra",       name: "Madhya Maharashtra" },
   { state: "Maharashtra",       name: "Marathwada" },
   { state: "Maharashtra",       name: "Vidarbha" },
+  { state: "Maharashtra",       name: "Konkan & Goa" },
 
-  // Telangana
+  // Telangana (1)
   { state: "Telangana",         name: "Telangana" },
 
-  // Andhra Pradesh
+  // Andhra Pradesh (2)
   { state: "Andhra Pradesh",    name: "Coastal Andhra Pradesh" },
   { state: "Andhra Pradesh",    name: "Rayalaseema" },
 
-  // Karnataka
-  { state: "Karnataka",         name: "N.I. Karnataka" },         // exact ST_NM
-  { state: "Karnataka",         name: "S.I. Karnataka" },         // exact ST_NM
+  // Karnataka (2)
+  { state: "Karnataka",         name: "N.I. Karnataka" },
+  { state: "Karnataka",         name: "S.I. Karnataka" },
 
-  // Tamil Nadu
+  // Tamil Nadu (1)
   { state: "Tamil Nadu",        name: "Tamil Nadu & Puducherry" }
-];
+]; // → total = 20
 
 // ---- Date header (IST) ----
 function updateISTDate() {
