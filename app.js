@@ -163,13 +163,21 @@ async function drawSubdivisionMap(svgSelector, onReady) {
 
     const NAME = pickNameKey(features);
 
-    // Use Mercator + fit only on near-India features (prevents “donut” scale)
+    // --- Projection & fit (centered + tunable zoom) ---
     const projection = d3.geoMercator();
     const path = d3.geoPath().projection(projection);
 
+    const PAD = 18; // padding in pixels
     const near = featuresNearIndia(features);
     const fitFC = { type: "FeatureCollection", features: near.length ? near : features };
-    projection.fitSize([W - 12, H - 12], fitFC);
+    projection.fitExtent([[PAD, PAD], [W - PAD, H - PAD]], fitFC);
+
+    // fine-tune zoom: >1 zoom in, <1 zoom out
+    const SCALE_BOOST = 1.12;
+    projection
+      .scale(projection.scale() * SCALE_BOOST)
+      .translate([W / 2, H / 2]); // keep centered after scaling
+    // -----------------------------------------------
 
     // Fills
     svg.append("g").attr("class", "fills")
@@ -179,7 +187,7 @@ async function drawSubdivisionMap(svgSelector, onReady) {
       .append("path")
       .attr("class", "state")
       .attr("d", path)
-      .attr("fill-rule", "evenodd")          // <- fixes inverted polygons
+      .attr("fill-rule", "evenodd")          // fix inverted polygons
       .attr("data-name", d => d.properties?.[NAME] ?? "")
       .attr("data-norm", d => canonical(d.properties?.[NAME] ?? ""))
       .attr("fill", "#e6e6e6")
@@ -196,7 +204,9 @@ async function drawSubdivisionMap(svgSelector, onReady) {
           `#indiaSubMapDay1 .borders .border[data-norm='${cssEscape(id)}'],` +
           `#indiaSubMapDay2 .borders .border[data-norm='${cssEscape(id)}']`
         ).attr("stroke", "#666").attr("stroke-width", 0.8);
-      });
+      })
+      .append("title")
+      .text(d => d.properties?.[NAME] ?? "");
 
     // Borders
     svg.append("g").attr("class", "borders")
@@ -246,26 +256,6 @@ function paintMapsFromTable() {
     d3.selectAll(`#indiaSubMapDay2 .fills path.state[data-norm='${cssEscape(id)}']`).attr("fill", c2);
   });
 }
-
-// --- Projection & fit (clean zoom control) ---
-const projection = d3.geoMercator();
-const path = d3.geoPath().projection(projection);
-
-// Use only features near India to compute the fit (prevents outliers)
-// then fit with a fixed padding box
-const PAD = 18;                             // pixels of padding around India
-const near = featuresNearIndia(features);
-const fitFC = { type: "FeatureCollection", features: near.length ? near : features };
-
-projection.fitExtent([[PAD, PAD], [W - PAD, H - PAD]], fitFC);
-
-// OPTIONAL fine-tune zoom level in one place:
-//   > 1.00 => zoom in (bigger India)
-//   < 1.00 => zoom out (smaller India)
-const SCALE_BOOST = 1.12;                   // try 1.12 if it looks too “zoomed out”
-projection
-  .scale(projection.scale() * SCALE_BOOST)
-  .translate([W / 2, H / 2]);               // keep centered after scaling
 
 /***********************
  * INIT
