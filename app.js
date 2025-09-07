@@ -1,4 +1,4 @@
-<script>
+
 // =============== CONFIG (sub-division GeoJSON) ===============
 const SUBDIV_GEO_URLS = [
   "indian_met_zones.geojson",
