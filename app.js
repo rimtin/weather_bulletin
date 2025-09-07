@@ -1,5 +1,7 @@
 
-// =============== CONFIG (sub-division GeoJSON) ===============
+/***********************
+ * CONFIG – Subdivision GeoJSON only
+ ***********************/
 const SUBDIV_GEO_URLS = [
   "indian_met_zones.geojson",
   "assets/indian_met_zones.geojson",
@@ -8,11 +10,16 @@ const SUBDIV_GEO_URLS = [
   "https://cdn.jsdelivr.net/gh/rimtin/weather_bulletin@main/indian_met_zones.geojson"
 ];
 
-// =============== HELPERS ===============
-const W = 860, H = 580;           // canonical drawing size
-const PAD = 18;                   // padding inside the viewBox
-const SCALE_BOOST = 1.10;         // 1.00=fit exactly, >1 zoom in slightly
+/***********************
+ * CONSTANTS
+ ***********************/
+const W = 860, H = 580;   // canonical viewBox size
+const PAD = 18;           // padding around India in pixels
+const SCALE_BOOST = 1.10; // >1 zooms in a little
 
+/***********************
+ * HELPERS
+ ***********************/
 const cssEscape = s =>
   (window.CSS && CSS.escape) ? CSS.escape(String(s ?? "")) :
   String(s ?? "").replace(/'/g,"\\'").replace(/"/g,'\\"');
@@ -68,18 +75,17 @@ function featuresNearIndia(features) {
   });
 }
 
-// Make sure the SVG cannot collapse (this was the “5×580” issue).
 function ensureSvgSize(svg) {
   svg.attr("viewBox", `0 0 ${W} ${H}`)
      .attr("preserveAspectRatio", "xMidYMid meet");
+  // hard guard if layout collapses width/height
   const bb = svg.node().getBoundingClientRect();
-  if (bb.width < W * 0.8 || bb.height < H * 0.8) {
+  if (bb.width < 0.8 * W || bb.height < 0.8 * H) {
     svg.attr("width", W).attr("height", H)
        .style("width", W + "px").style("height", H + "px");
   }
 }
 
-// Hatch pattern used to represent “No Forecast”
 function ensureNoForecastPattern(svg) {
   const id = (svg.attr("id") || "map") + "_noForecast";
   let defs = svg.select("defs");
@@ -87,8 +93,7 @@ function ensureNoForecastPattern(svg) {
   if (svg.select("#" + cssEscape(id)).empty()) {
     const p = defs.append("pattern")
       .attr("id", id).attr("patternUnits", "userSpaceOnUse")
-      .attr("width", 8).attr("height", 8)
-      .attr("patternTransform", "rotate(45)");
+      .attr("width", 8).attr("height", 8).attr("patternTransform", "rotate(45)");
     p.append("rect").attr("width", 8).attr("height", 8).attr("fill", "#f2f2f2");
     p.append("path").attr("d", "M 0 0 L 0 8").attr("stroke", "#999").attr("stroke-width", 1);
   }
@@ -96,7 +101,9 @@ function ensureNoForecastPattern(svg) {
   return id;
 }
 
-// =============== TABLE (unchanged wiring) ===============
+/***********************
+ * TABLE
+ ***********************/
 function buildSubdivisionTable() {
   const tbody = document.getElementById("subdivision-table-body");
   if (!tbody) return;
@@ -118,16 +125,13 @@ function buildSubdivisionTable() {
         ${i === 0 ? `<td rowspan="${rows.length}">${state}</td>` : ""}
         <td>${row.name}</td>
         <td contenteditable="true"></td>
-        <td><select class="day1">${(window.forecastOptions || []).map(o => `<option>${o}</option>`).join("")}</select></td>
-        <td><select class="day2">${(window.forecastOptions || []).map(o => `<option>${o}</option>`).join("")}</select></td>
-      `;
+        <td><select class="day1">${(window.forecastOptions||[]).map(o=>`<option>${o}</option>`).join("")}</select></td>
+        <td><select class="day2">${(window.forecastOptions||[]).map(o=>`<option>${o}</option>`).join("")}</select></td>`;
       tbody.appendChild(tr);
     });
   });
 
-  tbody.querySelectorAll("select").forEach(sel =>
-    sel.addEventListener("change", paintMapsFromTable)
-  );
+  tbody.querySelectorAll("select").forEach(sel => sel.addEventListener("change", paintMapsFromTable));
 
   // table → map hover
   tbody.querySelectorAll("tr").forEach(tr => {
@@ -147,14 +151,16 @@ function buildSubdivisionTable() {
   });
 }
 
-// =============== MAPS ===============
+/***********************
+ * MAPS
+ ***********************/
 async function drawSubdivisionMap(svgSelector, onReady) {
   const svg = d3.select(svgSelector);
   if (svg.empty()) return onReady?.();
   svg.selectAll("*").remove();
 
   ensureSvgSize(svg);
-  const nfId = ensureNoForecastPattern(svg);
+  ensureNoForecastPattern(svg);
 
   try {
     const fc = await loadGeoJSON(SUBDIV_GEO_URLS);
@@ -163,16 +169,16 @@ async function drawSubdivisionMap(svgSelector, onReady) {
 
     const NAME = pickNameKey(features);
 
-    // Projection & fit (no “donut”; centered; predictable zoom)
     const projection = d3.geoMercator();
     const path = d3.geoPath().projection(projection);
 
     const near = featuresNearIndia(features);
     const fitFC = { type: "FeatureCollection", features: near.length ? near : features };
+
     projection
       .fitExtent([[PAD, PAD], [W - PAD, H - PAD]], fitFC)
       .scale(projection.scale() * SCALE_BOOST)
-      .translate([W / 2, H / 2]);
+      .translate([W / 2, H / 2]); // keep centered after scaling
 
     // Fills
     svg.append("g").attr("class", "fills")
@@ -228,7 +234,9 @@ async function drawSubdivisionMap(svgSelector, onReady) {
   }
 }
 
-// =============== COLORS FROM TABLE ===============
+/***********************
+ * COLOR FROM TABLE
+ ***********************/
 function paintMapsFromTable() {
   const rows = document.querySelectorAll("#subdivision-table-body tr");
   const patt1 = document.getElementById("indiaSubMapDay1")?.getAttribute("data-nf-pattern");
@@ -239,10 +247,8 @@ function paintMapsFromTable() {
     const id = row.dataset.norm;
     const v1 = row.querySelector("select.day1")?.value?.trim() || "";
     const v2 = row.querySelector("select.day2")?.value?.trim() || "";
-
     const no1 = /no\s*forecast/i.test(v1);
     const no2 = /no\s*forecast/i.test(v2);
-
     const c1 = no1 ? (patt1 ? `url(#${patt1})` : "#f2f2f2") : (colors[v1] || "#e6e6e6");
     const c2 = no2 ? (patt2 ? `url(#${patt2})` : "#f2f2f2") : (colors[v2] || "#e6e6e6");
 
@@ -251,7 +257,9 @@ function paintMapsFromTable() {
   });
 }
 
-// =============== INIT ===============
+/***********************
+ * INIT
+ ***********************/
 window.addEventListener("unhandledrejection", e => {
   console.error("[Global] Unhandled promise:", e.reason || e);
 });
@@ -261,18 +269,16 @@ window.addEventListener("load", () => {
 
   buildSubdivisionTable();
 
-  // draw both maps, then do an initial color paint
   drawSubdivisionMap("#indiaSubMapDay1", () => {
     drawSubdivisionMap("#indiaSubMapDay2", () => {
       paintMapsFromTable();
     });
   });
 
-  // If layout changes collapse the SVG, redraw with a guaranteed size
+  // redraw on hard resizes to avoid accidental collapse
   window.addEventListener("resize", () => {
     drawSubdivisionMap("#indiaSubMapDay1", () => {
       drawSubdivisionMap("#indiaSubMapDay2", paintMapsFromTable);
     });
   });
 });
-
