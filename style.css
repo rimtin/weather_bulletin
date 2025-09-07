@@ -49,16 +49,23 @@ select { width: 100%; padding: 4px; font-size: 12px; }
 .map-label { text-align: center; font-weight: bold; font-size: 14px; margin: 10px 0; }
 .map-wrapper { margin: 10px auto; max-width: 720px; position: relative; break-inside: avoid; }
 
-/* Map SVGs — responsive and non-collapsing */
+.map-wrapper{
+  margin:10px auto;
+  max-width:100%;
+  position:relative;
+  break-inside:avoid;
+}
+
 .map-wrapper svg{
   display:block;
   width:100%;
   height:auto;
-  aspect-ratio: 860 / 580;     /* matches JS viewBox */
-  min-height:580px;
+  aspect-ratio:860/580;    /* matches JS viewBox */
+  min-height:580px;        /* adjust if you want shorter */
   border:1px solid #ccc;
   background:#fff;
 }
+
 @media (max-width: 600px){ .map-wrapper svg{ min-height:420px; } }
 
 /* Legend */
