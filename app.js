@@ -25,7 +25,6 @@ function canonical(input) {
     .replace(/&/g, "and")
     .replace(/\s+/g, " ")
     .trim()
-    // known IMD variants
     .replace(/north *interior *karnataka|n *i *karnataka/, "ni karnataka")
     .replace(/south *interior *karnataka|s *i *karnataka/, "si karnataka")
     .replace(/saurashtra *and *(kutch|kachchh|kachh)/, "saurashtra and kachh")
@@ -59,24 +58,19 @@ async function loadGeoJSON(urls) {
   throw last || new Error("All URLs failed");
 }
 
-/** Ensure a hatch pattern exists per SVG and return its id */
-function ensureNoForecastPattern(svg) {
-  const id = (svg.attr("id") || "map") + "_noForecast";
-  let defs = svg.select("defs");
-  if (defs.empty()) defs = svg.append("defs");
-
-  if (svg.select("#" + cssEscape(id)).empty()) {
-    const p = defs.append("pattern")
-      .attr("id", id)
-      .attr("patternUnits", "userSpaceOnUse")
-      .attr("width", 8).attr("height", 8)
-      .attr("patternTransform", "rotate(45)");
-
-    p.append("rect").attr("width", 8).attr("height", 8).attr("fill", "#f2f2f2");
-    p.append("path").attr("d", "M 0 0 L 0 8").attr("stroke", "#999").attr("stroke-width", 1);
-  }
-  svg.attr("data-nf-pattern", id);
-  return id;
+/** keep only features whose centroids lie roughly over India */
+function featuresNearIndia(features) {
+  const LON_MIN = 60, LON_MAX = 100;
+  const LAT_MIN = -5, LAT_MAX = 40;
+  const ok = f => {
+    try {
+      const [lon, lat] = d3.geoCentroid(f);
+      return isFinite(lon) && isFinite(lat) &&
+             lon >= LON_MIN && lon <= LON_MAX &&
+             lat >= LAT_MIN && lat <= LAT_MAX;
+    } catch { return false; }
+  };
+  return features.filter(ok);
 }
 
 /***********************
@@ -139,36 +133,53 @@ function buildSubdivisionTable() {
 async function drawSubdivisionMap(svgSelector, onReady) {
   const svg = d3.select(svgSelector);
   if (svg.empty()) { onReady?.(); return; }
-
   svg.selectAll("*").remove();
 
-  // viewBox MUST be 4 numbers; keep CSS responsive
+  // Solid viewBox; CSS controls responsive size
   const W = 860, H = 580;
   svg.attr("viewBox", `0 0 ${W} ${H}`).attr("preserveAspectRatio", "xMidYMid meet");
 
-  // hatch for "No Forecast"
-  const nfPatternId = ensureNoForecastPattern(svg);
+  // hatch for “No Forecast”
+  const nfId = (function ensureNoForecastPattern(svg) {
+    const id = (svg.attr("id") || "map") + "_noForecast";
+    let defs = svg.select("defs");
+    if (defs.empty()) defs = svg.append("defs");
+    if (svg.select("#" + cssEscape(id)).empty()) {
+      const p = defs.append("pattern")
+        .attr("id", id).attr("patternUnits", "userSpaceOnUse")
+        .attr("width", 8).attr("height", 8)
+        .attr("patternTransform", "rotate(45)");
+      p.append("rect").attr("width", 8).attr("height", 8).attr("fill", "#f2f2f2");
+      p.append("path").attr("d", "M 0 0 L 0 8").attr("stroke", "#999").attr("stroke-width", 1);
+    }
+    svg.attr("data-nf-pattern", id);
+    return id;
+  })(svg);
 
   try {
     const fc = await loadGeoJSON(SUBDIV_GEO_URLS);
-    const NAME = pickNameKey(fc.features);
+    const features = fc.features || [];
+    if (!features.length) return onReady?.();
 
-    // projection tuned for India
-    const projection = d3.geoConicEqualArea()
-      .parallels([12, 33])          // standard parallels
-      .rotate([-82.5, 0])           // longitude of center as rotation
-      .center([0, 22]);             // latitude center
+    const NAME = pickNameKey(features);
+
+    // Use Mercator + fit only on near-India features (prevents “donut” scale)
+    const projection = d3.geoMercator();
     const path = d3.geoPath().projection(projection);
-    projection.fitSize([W - 12, H - 12], fc);
+
+    const near = featuresNearIndia(features);
+    const fitFC = { type: "FeatureCollection", features: near.length ? near : features };
+    projection.fitSize([W - 12, H - 12], fitFC);
 
     // Fills
     svg.append("g").attr("class", "fills")
       .selectAll("path.state")
-      .data(fc.features)
+      .data(features)
       .enter()
       .append("path")
       .attr("class", "state")
       .attr("d", path)
+      .attr("fill-rule", "evenodd")          // <- fixes inverted polygons
       .attr("data-name", d => d.properties?.[NAME] ?? "")
       .attr("data-norm", d => canonical(d.properties?.[NAME] ?? ""))
       .attr("fill", "#e6e6e6")
@@ -190,7 +201,7 @@ async function drawSubdivisionMap(svgSelector, onReady) {
     // Borders
     svg.append("g").attr("class", "borders")
       .selectAll("path.border")
-      .data(fc.features)
+      .data(features)
       .enter()
       .append("path")
       .attr("class", "border")
@@ -203,13 +214,10 @@ async function drawSubdivisionMap(svgSelector, onReady) {
       .attr("data-name", d => d.properties?.[NAME] ?? "")
       .attr("data-norm", d => canonical(d.properties?.[NAME] ?? ""));
 
-    svg.attr("data-nf-pattern", nfPatternId);
-
     onReady?.();
   } catch (e) {
     console.error("[Map] load error:", e);
-    const msg = "Failed to load subdivision map data.";
-    svg.append("text").attr("x", 20).attr("y", 40).attr("fill", "#b00").text(msg);
+    svg.append("text").attr("x", 20).attr("y", 40).attr("fill", "#b00").text("Failed to load subdivision map data.");
     onReady?.();
   }
 }
@@ -251,7 +259,6 @@ window.addEventListener("load", () => {
 
   buildSubdivisionTable();
 
-  // draw both maps, then do an initial paint so colors show
   drawSubdivisionMap("#indiaSubMapDay1", () => {
     drawSubdivisionMap("#indiaSubMapDay2", () => {
       paintMapsFromTable();
