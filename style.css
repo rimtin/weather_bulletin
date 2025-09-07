@@ -1,9 +1,9 @@
-/* === Reset & Layout === */
+/* Reset & Layout */
 * { box-sizing: border-box; margin: 0; padding: 0; }
 body { font-family: Arial, sans-serif; background: #f2f2f2; display: flex; justify-content: center; }
 .container { background: #fff; padding: 20px; max-width: 794px; width: 100%; margin: 20px auto; box-shadow: 0 0 12px rgba(0,0,0,0.1); overflow-x: auto; }
 
-/* Use the same colors as in data.js (forecastColors) */
+/* Colors (match data.js) */
 :root{
   --clr-clear:#A7D8EB;
   --clr-low:#C4E17F;
@@ -20,7 +20,7 @@ body { font-family: Arial, sans-serif; background: #f2f2f2; display: flex; justi
 .center-title { font-size: 24px; text-align: center; margin-bottom: 6px; }
 .center-date  { font-size: 14px; text-align: center; margin-bottom: 10px; }
 
-/* Notes block */
+/* Notes */
 .bulletin-text {
   border: 1px solid #ccc; padding: 10px; margin: 20px auto; border-radius: 6px;
   max-width: 600px; text-align: justify; font-size: 13px; line-height: 1.6;
@@ -33,11 +33,8 @@ body { font-family: Arial, sans-serif; background: #f2f2f2; display: flex; justi
 .cloud-info-table th, .cloud-info-table td,
 .forecast-table th, .forecast-table td { border: 1.4px solid #222; padding: 6px; text-align: center; vertical-align: middle; }
 .cloud-info-table th, .forecast-table th { background-color: #cce6ff; font-weight: bold; }
-
-/* Zebra stripe only for data tables */
 .forecast-table tbody tr:nth-child(even) { background: #f9f9f9; }
 .cloud-cover-reference .cloud-info-table tbody tr:nth-child(even) { background: transparent; }
-
 .table-title { text-align: center; font-size: 18px; font-weight: bold; margin: 20px 0 10px; }
 
 /* Dropdowns */
@@ -45,28 +42,22 @@ select { width: 100%; padding: 4px; font-size: 12px; }
 .forecast-table tbody tr:hover { background: #e9f2ff !important; }
 .forecast-table td select:hover { outline: 2px solid #99c2ff; cursor: pointer; }
 
-/* Map label + wrapper */
+/* Map */
 .map-label { text-align: center; font-weight: bold; font-size: 14px; margin: 10px 0; }
 .map-wrapper { margin: 10px auto; max-width: 720px; position: relative; break-inside: avoid; }
 
-.map-wrapper{
-  margin:10px auto;
-  max-width:100%;
-  position:relative;
-  break-inside:avoid;
-}
-
+/* Responsive, non-collapsing SVGs */
 .map-wrapper svg{
   display:block;
   width:100%;
   height:auto;
-  aspect-ratio:860/580;    /* matches JS viewBox */
-  min-height:580px;        /* adjust if you want shorter */
+  aspect-ratio: 860 / 580;  /* must match JS viewBox */
+  min-height:580px;
   border:1px solid #ccc;
   background:#fff;
+  position:relative;
+  z-index:2;
 }
-
-@media (max-width: 600px){ .map-wrapper svg{ min-height:420px; } }
 
 /* Legend */
 .map-legend {
@@ -74,7 +65,7 @@ select { width: 100%; padding: 4px; font-size: 12px; }
   background: #fff; border: 1px solid #ccc; padding: 8px 12px;
   font-size: 12px; border-radius: 6px; box-shadow: 0 0 4px rgba(0,0,0,0.1);
   width: fit-content; z-index: 10;
-  pointer-events: none; /* don’t block map hover */
+  pointer-events: none;      /* don't block map hover */
 }
 .map-legend ul { list-style: none; padding: 0; margin: 0; }
 .map-legend li { margin-bottom: 6px; display: flex; align-items: center; }
@@ -97,18 +88,20 @@ select { width: 100%; padding: 4px; font-size: 12px; }
 /* Note row */
 .note-row { text-align: left; padding: 8px 10px; font-size: 12px; background: #fff9e6; color: #5a4100; font-weight: 600; }
 
-/* Map state hover */
-.state:hover { filter: drop-shadow(0 0 3px rgba(0,0,0,0.25)); cursor: pointer; }
+/* Map base styling (JS overrides fill) */
+#indiaSubMapDay1 path.state,
+#indiaSubMapDay2 path.state {
+  fill: #e6e6e6;
+  stroke: none;
+}
+#indiaSubMapDay1 .borders .border,
+#indiaSubMapDay2 .borders .border {
+  fill: none;
+  stroke: #666;
+  stroke-width: 0.8px;
+  vector-effect: non-scaling-stroke;
+}
 
 /* Download button */
 button { display: block; margin: 30px auto 10px; padding: 10px 20px; font-size: 14px; background: #007bff; border: none; color: #fff; border-radius: 6px; cursor: pointer; }
 button:hover { background: #0056b3; }
-
-/* Path base (JS overwrites fill) */
-#indiaSubMapDay1 path.state,
-#indiaSubMapDay2 path.state {
-  fill: #e6e6e6;
-  stroke: #222;
-  stroke-width: 0.8px;
-  vector-effect: non-scaling-stroke;
-}
