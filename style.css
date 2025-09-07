@@ -105,3 +105,10 @@ select { width: 100%; padding: 4px; font-size: 12px; }
 /* Download button */
 button { display: block; margin: 30px auto 10px; padding: 10px 20px; font-size: 14px; background: #007bff; border: none; color: #fff; border-radius: 6px; cursor: pointer; }
 button:hover { background: #0056b3; }
+
+/* Ensure polygons with wrong winding don't invert the fill */
+#indiaSubMapDay1 path.state,
+#indiaSubMapDay2 path.state {
+  fill-rule: evenodd;
+}
+
