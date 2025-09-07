@@ -1,6 +1,5 @@
-/***********************
- * CONFIG – Subdivision GeoJSON only
- ***********************/
+<script>
+// =============== CONFIG (sub-division GeoJSON) ===============
 const SUBDIV_GEO_URLS = [
   "indian_met_zones.geojson",
   "assets/indian_met_zones.geojson",
@@ -9,13 +8,14 @@ const SUBDIV_GEO_URLS = [
   "https://cdn.jsdelivr.net/gh/rimtin/weather_bulletin@main/indian_met_zones.geojson"
 ];
 
-/***********************
- * HELPERS
- ***********************/
-const cssEscape = (s) =>
-  (window.CSS && typeof CSS.escape === "function")
-    ? CSS.escape(String(s ?? ""))
-    : String(s ?? "").replace(/'/g, "\\'").replace(/"/g, '\\"');
+// =============== HELPERS ===============
+const W = 860, H = 580;           // canonical drawing size
+const PAD = 18;                   // padding inside the viewBox
+const SCALE_BOOST = 1.10;         // 1.00=fit exactly, >1 zoom in slightly
+
+const cssEscape = s =>
+  (window.CSS && CSS.escape) ? CSS.escape(String(s ?? "")) :
+  String(s ?? "").replace(/'/g,"\\'").replace(/"/g,'\\"');
 
 function canonical(input) {
   return String(input || "")
@@ -43,39 +43,60 @@ function pickNameKey(features) {
 }
 
 async function loadGeoJSON(urls) {
-  let last;
+  let lastErr;
   for (const u of urls) {
     try {
-      const join = u.includes("?") ? "&" : "?";
-      const res = await fetch(`${u}${join}v=${Date.now()}`, { cache: "no-store" });
-      if (!res.ok) throw new Error(res.status + " " + res.statusText);
-      const j = await res.json();
+      const url = u + (u.includes("?") ? "&" : "?") + "v=" + Date.now();
+      const r = await fetch(url, { cache: "no-store" });
+      if (!r.ok) throw new Error(`${r.status} ${r.statusText}`);
+      const j = await r.json();
       const feats = (j.features || []).filter(f => f && f.geometry);
       if (!feats.length) throw new Error("Empty features");
       return { type: "FeatureCollection", features: feats };
-    } catch (e) { console.warn("[GeoJSON] fail:", u, e); last = e; }
+    } catch (e) { console.warn("[GeoJSON] failed:", u, e); lastErr = e; }
   }
-  throw last || new Error("All URLs failed");
+  throw lastErr || new Error("All URLs failed");
 }
 
-/** keep only features whose centroids lie roughly over India */
 function featuresNearIndia(features) {
-  const LON_MIN = 60, LON_MAX = 100;
-  const LAT_MIN = -5, LAT_MAX = 40;
-  const ok = f => {
+  const LON_MIN = 60, LON_MAX = 100, LAT_MIN = -5, LAT_MAX = 40;
+  return features.filter(f => {
     try {
       const [lon, lat] = d3.geoCentroid(f);
-      return isFinite(lon) && isFinite(lat) &&
-             lon >= LON_MIN && lon <= LON_MAX &&
-             lat >= LAT_MIN && lat <= LAT_MAX;
+      return lon >= LON_MIN && lon <= LON_MAX && lat >= LAT_MIN && lat <= LAT_MAX;
     } catch { return false; }
-  };
-  return features.filter(ok);
+  });
 }
 
-/***********************
- * TABLE
- ***********************/
+// Make sure the SVG cannot collapse (this was the “5×580” issue).
+function ensureSvgSize(svg) {
+  svg.attr("viewBox", `0 0 ${W} ${H}`)
+     .attr("preserveAspectRatio", "xMidYMid meet");
+  const bb = svg.node().getBoundingClientRect();
+  if (bb.width < W * 0.8 || bb.height < H * 0.8) {
+    svg.attr("width", W).attr("height", H)
+       .style("width", W + "px").style("height", H + "px");
+  }
+}
+
+// Hatch pattern used to represent “No Forecast”
+function ensureNoForecastPattern(svg) {
+  const id = (svg.attr("id") || "map") + "_noForecast";
+  let defs = svg.select("defs");
+  if (defs.empty()) defs = svg.append("defs");
+  if (svg.select("#" + cssEscape(id)).empty()) {
+    const p = defs.append("pattern")
+      .attr("id", id).attr("patternUnits", "userSpaceOnUse")
+      .attr("width", 8).attr("height", 8)
+      .attr("patternTransform", "rotate(45)");
+    p.append("rect").attr("width", 8).attr("height", 8).attr("fill", "#f2f2f2");
+    p.append("path").attr("d", "M 0 0 L 0 8").attr("stroke", "#999").attr("stroke-width", 1);
+  }
+  svg.attr("data-nf-pattern", id);
+  return id;
+}
+
+// =============== TABLE (unchanged wiring) ===============
 function buildSubdivisionTable() {
   const tbody = document.getElementById("subdivision-table-body");
   if (!tbody) return;
@@ -104,7 +125,6 @@ function buildSubdivisionTable() {
     });
   });
 
-  // select → color
   tbody.querySelectorAll("select").forEach(sel =>
     sel.addEventListener("change", paintMapsFromTable)
   );
@@ -127,34 +147,14 @@ function buildSubdivisionTable() {
   });
 }
 
-/***********************
- * MAPS
- ***********************/
+// =============== MAPS ===============
 async function drawSubdivisionMap(svgSelector, onReady) {
   const svg = d3.select(svgSelector);
-  if (svg.empty()) { onReady?.(); return; }
+  if (svg.empty()) return onReady?.();
   svg.selectAll("*").remove();
 
-  // Solid viewBox; CSS controls responsive size
-  const W = 860, H = 580;
-  svg.attr("viewBox", `0 0 ${W} ${H}`).attr("preserveAspectRatio", "xMidYMid meet");
-
-  // hatch for “No Forecast”
-  const nfId = (function ensureNoForecastPattern(svg) {
-    const id = (svg.attr("id") || "map") + "_noForecast";
-    let defs = svg.select("defs");
-    if (defs.empty()) defs = svg.append("defs");
-    if (svg.select("#" + cssEscape(id)).empty()) {
-      const p = defs.append("pattern")
-        .attr("id", id).attr("patternUnits", "userSpaceOnUse")
-        .attr("width", 8).attr("height", 8)
-        .attr("patternTransform", "rotate(45)");
-      p.append("rect").attr("width", 8).attr("height", 8).attr("fill", "#f2f2f2");
-      p.append("path").attr("d", "M 0 0 L 0 8").attr("stroke", "#999").attr("stroke-width", 1);
-    }
-    svg.attr("data-nf-pattern", id);
-    return id;
-  })(svg);
+  ensureSvgSize(svg);
+  const nfId = ensureNoForecastPattern(svg);
 
   try {
     const fc = await loadGeoJSON(SUBDIV_GEO_URLS);
@@ -163,21 +163,16 @@ async function drawSubdivisionMap(svgSelector, onReady) {
 
     const NAME = pickNameKey(features);
 
-    // --- Projection & fit (centered + tunable zoom) ---
+    // Projection & fit (no “donut”; centered; predictable zoom)
     const projection = d3.geoMercator();
     const path = d3.geoPath().projection(projection);
 
-    const PAD = 18; // padding in pixels
     const near = featuresNearIndia(features);
     const fitFC = { type: "FeatureCollection", features: near.length ? near : features };
-    projection.fitExtent([[PAD, PAD], [W - PAD, H - PAD]], fitFC);
-
-    // fine-tune zoom: >1 zoom in, <1 zoom out
-    const SCALE_BOOST = 1.12;
     projection
+      .fitExtent([[PAD, PAD], [W - PAD, H - PAD]], fitFC)
       .scale(projection.scale() * SCALE_BOOST)
-      .translate([W / 2, H / 2]); // keep centered after scaling
-    // -----------------------------------------------
+      .translate([W / 2, H / 2]);
 
     // Fills
     svg.append("g").attr("class", "fills")
@@ -187,7 +182,7 @@ async function drawSubdivisionMap(svgSelector, onReady) {
       .append("path")
       .attr("class", "state")
       .attr("d", path)
-      .attr("fill-rule", "evenodd")          // fix inverted polygons
+      .attr("fill-rule", "evenodd")
       .attr("data-name", d => d.properties?.[NAME] ?? "")
       .attr("data-norm", d => canonical(d.properties?.[NAME] ?? ""))
       .attr("fill", "#e6e6e6")
@@ -227,14 +222,13 @@ async function drawSubdivisionMap(svgSelector, onReady) {
     onReady?.();
   } catch (e) {
     console.error("[Map] load error:", e);
-    svg.append("text").attr("x", 20).attr("y", 40).attr("fill", "#b00").text("Failed to load subdivision map data.");
+    svg.append("text").attr("x", 20).attr("y", 40).attr("fill", "#b00")
+      .text("Failed to load subdivision map data.");
     onReady?.();
   }
 }
 
-/***********************
- * COLOR FROM TABLE
- ***********************/
+// =============== COLORS FROM TABLE ===============
 function paintMapsFromTable() {
   const rows = document.querySelectorAll("#subdivision-table-body tr");
   const patt1 = document.getElementById("indiaSubMapDay1")?.getAttribute("data-nf-pattern");
@@ -243,23 +237,21 @@ function paintMapsFromTable() {
 
   rows.forEach(row => {
     const id = row.dataset.norm;
-    const d1 = row.querySelector("select.day1")?.value?.trim() || "";
-    const d2 = row.querySelector("select.day2")?.value?.trim() || "";
+    const v1 = row.querySelector("select.day1")?.value?.trim() || "";
+    const v2 = row.querySelector("select.day2")?.value?.trim() || "";
 
-    const isNo1 = /no\s*forecast/i.test(d1);
-    const isNo2 = /no\s*forecast/i.test(d2);
+    const no1 = /no\s*forecast/i.test(v1);
+    const no2 = /no\s*forecast/i.test(v2);
 
-    const c1 = isNo1 ? (patt1 ? `url(#${patt1})` : "#f2f2f2") : (colors[d1] || "#e6e6e6");
-    const c2 = isNo2 ? (patt2 ? `url(#${patt2})` : "#f2f2f2") : (colors[d2] || "#e6e6e6");
+    const c1 = no1 ? (patt1 ? `url(#${patt1})` : "#f2f2f2") : (colors[v1] || "#e6e6e6");
+    const c2 = no2 ? (patt2 ? `url(#${patt2})` : "#f2f2f2") : (colors[v2] || "#e6e6e6");
 
     d3.selectAll(`#indiaSubMapDay1 .fills path.state[data-norm='${cssEscape(id)}']`).attr("fill", c1);
     d3.selectAll(`#indiaSubMapDay2 .fills path.state[data-norm='${cssEscape(id)}']`).attr("fill", c2);
   });
 }
 
-/***********************
- * INIT
- ***********************/
+// =============== INIT ===============
 window.addEventListener("unhandledrejection", e => {
   console.error("[Global] Unhandled promise:", e.reason || e);
 });
@@ -269,9 +261,18 @@ window.addEventListener("load", () => {
 
   buildSubdivisionTable();
 
+  // draw both maps, then do an initial color paint
   drawSubdivisionMap("#indiaSubMapDay1", () => {
     drawSubdivisionMap("#indiaSubMapDay2", () => {
       paintMapsFromTable();
     });
   });
+
+  // If layout changes collapse the SVG, redraw with a guaranteed size
+  window.addEventListener("resize", () => {
+    drawSubdivisionMap("#indiaSubMapDay1", () => {
+      drawSubdivisionMap("#indiaSubMapDay2", paintMapsFromTable);
+    });
+  });
 });
+</script>
