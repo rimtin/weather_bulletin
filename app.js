@@ -1,15 +1,7 @@
-/****************************
- * SOURCES (TopoJSON + GeoJSON fallback)
- ****************************/
-const TOPO_URLS = [
-  "india.json",
-  "assets/india.json",
-  "https://rimtin.github.io/weather_bulletin/india.json",
-  "https://raw.githubusercontent.com/rimtin/weather_bulletin/main/india.json",
-  "https://cdn.jsdelivr.net/gh/rimtin/weather_bulletin@main/india.json"
-];
-
-const GEOJSON_URLS = [
+/***********************
+ * CONFIG — Sub-division GeoJSON only
+ ***********************/
+const SUBDIV_GEO_URLS = [
   "indian_met_zones.geojson",
   "assets/indian_met_zones.geojson",
   "https://rimtin.github.io/weather_bulletin/indian_met_zones.geojson",
@@ -17,96 +9,57 @@ const GEOJSON_URLS = [
   "https://cdn.jsdelivr.net/gh/rimtin/weather_bulletin@main/indian_met_zones.geojson"
 ];
 
-let __FC = null;           // cached FeatureCollection
-let __NAME_KEY = "st_nm";  // detected name property
-
-const byId = id => document.getElementById(id);
+/***********************
+ * HELPERS
+ ***********************/
 const cssEscape = s =>
   (window.CSS && CSS.escape) ? CSS.escape(String(s ?? "")) : String(s ?? "").replace(/'/g,"\\'").replace(/"/g,'\\"');
 
-async function tryFetchJSON(u){
-  const url = u + (u.includes("?") ? "&" : "?") + "v=" + Date.now();
-  const r = await fetch(url, { cache: "no-store" });
-  if (!r.ok) throw new Error(`${r.status} ${r.statusText}`);
-  return r.json();
+function canonical(input) {
+  let s = String(input || "")
+    .replace(/[\u2010-\u2015]/g, "-")
+    .toLowerCase()
+    .replace(/\./g, "")
+    .replace(/&/g, "and")
+    .replace(/\s+/g, " ")
+    .trim();
+  s = s.replace(/north *interior *karnataka|n *i *karnataka/, "ni karnataka");
+  s = s.replace(/south *interior *karnataka|s *i *karnataka/, "si karnataka");
+  s = s.replace(/saurashtra *and *(kutch|kachchh|kachh)/, "saurashtra and kachh");
+  s = s.replace(/gujarat *region/, "gujarat region");
+  s = s.replace(/tamil *nadu *and *puducherry/, "tamil nadu and puducherry");
+  s = s.replace(/konkan *and *goa/, "konkan and goa");
+  return s.replace(/[^\w]+/g, "-");
 }
 
-function nameKeyFrom(features){
-  const pref = ["st_nm","ST_NM","NAME_1","name","NAME","st_name","ST_NAME","SUBDIV","subdiv"];
+function pickNameKey(features){
+  const pref = ["ST_NM","st_nm","NAME","name","SUBDIV","subdiv","ST_NAME","st_name"];
   const seen = new Set();
   features.forEach(f => Object.keys(f.properties||{}).forEach(k => seen.add(k)));
   for (const k of pref) if (seen.has(k)) return k;
   for (const f of features) for (const k of Object.keys(f.properties||{}))
     if (typeof f.properties[k] === "string") return k;
-  return "name";
+  return "ST_NM";
 }
 
-function isInIndiaBBox(f){
-  try{
-    const [lon, lat] = d3.geoCentroid(f);
-    return lon > 60 && lon < 100 && lat > 5 && lat < 37;  // rough India bbox
-  }catch{ return false; }
-}
-
-async function loadIndiaFeatures(){
-  if (__FC) return __FC;
-
-  // 1) Try TopoJSON – pick the object that looks like states (not Sphere/land)
-  for (const u of TOPO_URLS){
+async function loadGeoJSON(urls){
+  let last;
+  for (const u of urls){
     try{
-      const topo = await tryFetchJSON(u);
-      const objects = topo.objects || {};
-      const keys = Object.keys(objects);
-
-      // score objects by (#geometries + bonus if they have name-like props)
-      let bestKey = null, bestScore = -1;
-      for (const k of keys){
-        const geoms = objects[k]?.geometries || [];
-        const hasName = geoms.some(g => g?.properties && (
-          "st_nm" in g.properties || "ST_NM" in g.properties || "NAME_1" in g.properties || "name" in g.properties
-        ));
-        const score = geoms.length + (hasName ? 1000 : 0);
-        if (score > bestScore){ bestScore = score; bestKey = k; }
-      }
-      if (!bestKey) throw new Error("No usable TopoJSON object");
-
-      const fc = (window.topojson||topojson).feature(topo, objects[bestKey]);
-      let feats = (fc.features || []).filter(Boolean);
-
-      // drop outliers (Sphere/land rings)
-      feats = feats.filter(isInIndiaBBox);
-      if (feats.length < 20) throw new Error("Topo candidates did not look like Indian states");
-
-      __NAME_KEY = nameKeyFrom(feats);
-      __FC = { type: "FeatureCollection", features: feats };
-      console.info("[Map] Using TopoJSON object:", bestKey, "features:", feats.length, "NAME_KEY:", __NAME_KEY);
-      return __FC;
-    }catch(e){
-      console.warn("[Topo] failed:", u, e.message || e);
-    }
-  }
-
-  // 2) Fallback to your sub-division GeoJSON
-  for (const u of GEOJSON_URLS){
-    try{
-      const gj = await tryFetchJSON(u);
-      let feats = (gj.features || []).filter(f => f && f.geometry);
-      feats = feats.filter(isInIndiaBBox);
+      const url = u + (u.includes("?")?"&":"?") + "v=" + Date.now();
+      const r = await fetch(url, { cache: "no-store" });
+      if (!r.ok) throw new Error(`${r.status} ${r.statusText}`);
+      const gj = await r.json();
+      const feats = (gj.features||[]).filter(f => f && f.geometry);
       if (!feats.length) throw new Error("Empty/invalid features");
-      __NAME_KEY = nameKeyFrom(feats);
-      __FC = { type: "FeatureCollection", features: feats };
-      console.info("[Map] Using GeoJSON fallback. features:", feats.length, "NAME_KEY:", __NAME_KEY);
-      return __FC;
-    }catch(e){
-      console.warn("[GeoJSON] failed:", u, e.message || e);
-    }
+      return { type: "FeatureCollection", features: feats };
+    }catch(e){ console.warn("[GeoJSON] failed:", u, e); last = e; }
   }
-
-  throw new Error("Could not load India features from TopoJSON or GeoJSON");
+  throw last || new Error("All subdivision URLs failed");
 }
 
 function ensureHatch(svg){
-  const id="diagonalHatch";
+  const id="noForecast";
   if (!svg.select("#"+id).empty()) return id;
   let defs = svg.select("defs"); if (defs.empty()) defs = svg.append("defs");
   const p = defs.append("pattern").attr("id",id)
@@ -117,84 +70,168 @@ function ensureHatch(svg){
   return id;
 }
 
-/****************************
- * DRAW ONE MAP (always fit to data)
- ****************************/
-async function drawIndiaMap(svgId, dayTag){
-  const svg = d3.select("#"+svgId);
-  if (svg.empty()){ console.error("Missing SVG:", svgId); return; }
+function setRowHover(norm, on){
+  const row = document.querySelector(`#subdivision-table-body tr[data-norm='${cssEscape(norm)}']`);
+  if (row) row.style.backgroundColor = on ? "#e9f2ff" : "";
+}
+
+/***********************
+ * TABLE
+ ***********************/
+function buildSubdivisionTable(){
+  const tbody = document.getElementById("subdivision-table-body");
+  if (!tbody) return;
+  tbody.innerHTML = "";
+
+  const groups = {};
+  (window.subdivisions || []).forEach(r => (groups[r.state] ||= []).push(r));
+
+  let serial = 1;
+  Object.keys(groups).forEach(state => {
+    const rows = groups[state];
+    rows.forEach((row, i) => {
+      const tr = document.createElement("tr");
+      tr.dataset.state = state;
+      tr.dataset.subdiv = row.name;
+      tr.dataset.norm = canonical(row.name);
+      tr.innerHTML = `
+        <td>${serial++}</td>
+        ${i === 0 ? `<td rowspan="${rows.length}">${state}</td>` : ""}
+        <td>${row.name}</td>
+        <td contenteditable="true"></td>
+        <td><select class="day1">${(window.forecastOptions||[]).map(o=>`<option>${o}</option>`).join("")}</select></td>
+        <td><select class="day2">${(window.forecastOptions||[]).map(o=>`<option>${o}</option>`).join("")}</select></td>
+      `;
+      tbody.appendChild(tr);
+    });
+  });
+
+  // repaint on change
+  tbody.querySelectorAll("select").forEach(sel => sel.addEventListener("change", paintMapsFromTable));
+
+  // table → map hover
+  tbody.querySelectorAll("tr").forEach(tr=>{
+    const id = tr.dataset.norm;
+    tr.addEventListener("mouseenter", ()=>{
+      d3.selectAll(
+        `#indiaSubMapDay1 .borders .border[data-norm='${cssEscape(id)}'],`+
+        `#indiaSubMapDay2 .borders .border[data-norm='${cssEscape(id)}']`
+      ).attr("stroke-width", 1.6).attr("stroke", "#000");
+    });
+    tr.addEventListener("mouseleave", ()=>{
+      d3.selectAll(
+        `#indiaSubMapDay1 .borders .border[data-norm='${cssEscape(id)}'],`+
+        `#indiaSubMapDay2 .borders .border[data-norm='${cssEscape(id)}']`
+      ).attr("stroke-width", .6).attr("stroke", "#666");
+    });
+  });
+}
+
+/***********************
+ * MAP (GeoJSON-only, always fit)
+ ***********************/
+async function drawSubdivisionMap(svgSelector, onReady){
+  const svg = d3.select(svgSelector);
+  if (svg.empty()) return onReady?.();
   svg.selectAll("*").remove();
 
   const W = 860, H = 580;
   svg.attr("viewBox", `0 0 ${W} ${H}`)
      .attr("preserveAspectRatio", "xMidYMid meet")
-     .attr("width", null)
-     .attr("height", null);
+     .attr("width", null).attr("height", null);
 
-  const hatch = ensureHatch(svg);
+  const hatchId = ensureHatch(svg);
 
   try{
-    const fc = await loadIndiaFeatures();
+    const fc = await loadGeoJSON(SUBDIV_GEO_URLS);
     const features = fc.features;
+    const NAME = pickNameKey(features);
 
-    // Projection: fit to exactly what we will draw (no fixed scale/center)
-    const projection = d3.geoConicEqualArea()
-      .parallels([12, 33])
-      .rotate([-82.5, 0])   // center longitudes
-      .center([0, 22]);     // keep India vertical-ish
+    // projection: conic equal-area, fitted to data -> no tiny/off-center maps
+    const projection = d3.geoConicEqualArea().parallels([12,33]).rotate([-82.5,0]).center([0,22]);
     const path = d3.geoPath().projection(projection);
     projection.fitSize([W - 12, H - 12], fc);
 
-    const root = svg.append("g").attr("class", "viewport");
-
-    root.append("g").attr("class", "fills")
-      .selectAll("path.state")
-      .data(features)
-      .enter()
-      .append("path")
-      .attr("class", "state")
+    // fills
+    const gF = svg.append("g").attr("class","fills");
+    gF.selectAll("path.state").data(features).enter().append("path")
+      .attr("class","state")
       .attr("d", path)
-      .attr("id", d => d.properties?.[__NAME_KEY] ?? "")
-      .attr("data-name", d => d.properties?.[__NAME_KEY] ?? "")
-      .attr("data-norm", d => (d.properties?.[__NAME_KEY] ?? "").toLowerCase().replace(/[^\w]+/g,"-"))
+      .attr("data-name", d => d.properties?.[NAME] ?? "")
+      .attr("data-norm", d => canonical(d.properties?.[NAME] ?? ""))
       .attr("fill", "#e6e6e6")
-      .attr("stroke", "none");
+      .attr("stroke", "none")
+      .on("mouseenter", (e,d)=>{
+        const id = canonical(d.properties?.[NAME] ?? "");
+        d3.selectAll(
+          `#indiaSubMapDay1 .borders .border[data-norm='${cssEscape(id)}'],`+
+          `#indiaSubMapDay2 .borders .border[data-norm='${cssEscape(id)}']`
+        ).attr("stroke-width", 1.6).attr("stroke","#000");
+        setRowHover(id, true);
+      })
+      .on("mouseleave", (e,d)=>{
+        const id = canonical(d.properties?.[NAME] ?? "");
+        d3.selectAll(
+          `#indiaSubMapDay1 .borders .border[data-norm='${cssEscape(id)}'],`+
+          `#indiaSubMapDay2 .borders .border[data-norm='${cssEscape(id)}']`
+        ).attr("stroke-width", .6).attr("stroke","#666");
+        setRowHover(id, false);
+      })
+      .append("title").text(d => d.properties?.[NAME] ?? "");
 
-    // border overlay
-    root.append("g").attr("class", "borders")
-      .selectAll("path.border")
-      .data(features)
-      .enter()
-      .append("path")
-      .attr("class", "border")
-      .attr("d", path)
-      .attr("fill", "none")
-      .attr("stroke", "#666")
-      .attr("stroke-width", 0.8)
-      .attr("vector-effect", "non-scaling-stroke")
-      .attr("pointer-events", "none");
+    // borders overlay
+    const gB = svg.append("g").attr("class","borders");
+    gB.selectAll("path.border").data(features).enter().append("path")
+      .attr("class","border").attr("d", path)
+      .attr("fill","none").attr("stroke","#666").attr("stroke-width", .6)
+      .attr("pointer-events","none").attr("vector-effect","non-scaling-stroke")
+      .attr("data-name", d => d.properties?.[NAME] ?? "")
+      .attr("data-norm", d => canonical(d.properties?.[NAME] ?? ""));
 
-    // simple hover feedback on fills
-    svg.selectAll(".fills .state")
-      .on("mouseover", function(){ d3.select(this).attr("opacity", 0.85); })
-      .on("mouseout",  function(){ d3.select(this).attr("opacity", 1);  });
-
-    // cache centroids for icon placement
-    features.forEach(f => {
-      const nm = f.properties?.[__NAME_KEY]; if (!nm) return;
-      window.stateCentroids[nm] = path.centroid(f);
-    });
-
-    // allow hatch coloring later
-    svg.attr("data-nf-pattern", hatch);
-
+    svg.attr("data-nf-pattern", hatchId);
+    onReady?.();
   }catch(e){
-    console.error("[Map] draw error:", e);
-    // draw a clear inline error so failures are visible on the page
-    const g = svg.append("g");
-    g.append("rect").attr("x",0).attr("y",0).attr("width","100%").attr("height","100%")
-      .attr("fill","#fff");
-    g.append("text").attr("x", 20).attr("y", 40).attr("font-size", 14).attr("fill", "#b00")
-      .text("Failed to load India features. See console for details.");
+    console.error("[Map] load error:", e);
+    svg.append("text").attr("x", 20).attr("y", 40).attr("fill","#b00").text("Failed to load sub-division map.");
+    onReady?.();
   }
 }
+
+/***********************
+ * COLORING from table
+ ***********************/
+function paintMapsFromTable(){
+  const rows = document.querySelectorAll("#subdivision-table-body tr");
+  const patt1 = document.getElementById("indiaSubMapDay1")?.getAttribute("data-nf-pattern");
+  const patt2 = document.getElementById("indiaSubMapDay2")?.getAttribute("data-nf-pattern");
+
+  rows.forEach(row=>{
+    const id = row.dataset.norm;
+    const v1 = row.querySelector("select.day1")?.value?.trim();
+    const v2 = row.querySelector("select.day2")?.value?.trim();
+
+    const isNo1 = !v1 || /select|no\s*forecast/i.test(v1);
+    const isNo2 = !v2 || /select|no\s*forecast/i.test(v2);
+
+    const c1 = isNo1 ? (patt1 ? `url(#${patt1})` : "#f2f2f2") : ((window.forecastColors||{})[v1] || "#e6e6e6");
+    const c2 = isNo2 ? (patt2 ? `url(#${patt2})` : "#f2f2f2") : ((window.forecastColors||{})[v2] || "#e6e6e6");
+
+    d3.selectAll(`#indiaSubMapDay1 .fills path.state[data-norm='${cssEscape(id)}']`).attr("fill", c1);
+    d3.selectAll(`#indiaSubMapDay2 .fills path.state[data-norm='${cssEscape(id)}']`).attr("fill", c2);
+  });
+}
+
+/***********************
+ * INIT
+ ***********************/
+window.addEventListener("load", ()=>{
+  if (typeof updateISTDate === "function") updateISTDate();
+
+  buildSubdivisionTable();
+
+  drawSubdivisionMap("#indiaSubMapDay1", () => {
+    drawSubdivisionMap("#indiaSubMapDay2", () => {
+      paintMapsFromTable(); // initial paint
+    });
+  });
+});
