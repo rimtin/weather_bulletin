@@ -112,3 +112,41 @@ button:hover { background: #0056b3; }
   fill-rule: evenodd;
 }
 
+/* --- MAPS (clean + non-collapsing) --- */
+.map-wrapper {
+  margin: 10px auto;
+  max-width: 720px;
+  position: relative;
+  break-inside: avoid;
+}
+
+/* one source of truth for the SVG size */
+.map-wrapper svg {
+  display: block;
+  width: 100%;
+  max-width: 720px;
+  min-width: 640px;         /* prevents “5px width” scenarios */
+  height: 580px;            /* fixed height = reliable layout */
+  background: #fff;
+  border: 1px solid #ccc;
+}
+
+/* legend never blocks hover */
+.map-legend { pointer-events: none; }
+
+/* fills + borders (JS paints fills; borders stay crisp) */
+#indiaSubMapDay1 .fills .state,
+#indiaSubMapDay2 .fills .state {
+  fill: #e6e6e6;            /* default; JS overrides on selection */
+  fill-rule: evenodd;       /* avoids inverted/“donut” polygons */
+  stroke: none;             /* borders are drawn separately */
+}
+
+#indiaSubMapDay1 .borders .border,
+#indiaSubMapDay2 .borders .border {
+  fill: none;
+  stroke: #666;
+  stroke-width: 0.8px;
+  vector-effect: non-scaling-stroke;
+  pointer-events: none;     /* keeps hover on the fills */
+}
