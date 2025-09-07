@@ -175,7 +175,7 @@ async function drawSubdivisionMap(svgSelector, onReady) {
     // conic equal area (better India shape) and fit
     const projection = d3.geoConicEqualArea().parallels([12,33]).center([82.5,22]);
     const path = d3.geoPath().projection(projection);
-    projection.fitSize([W - 12, H - 12], { type: "FeatureCollection", features });
+    projection.fitSize([W - 50, H - 50], { type: "FeatureCollection", features });
 
     // Fills
     const fillsG = svg.append("g").attr("class", "fills");
