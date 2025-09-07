@@ -7,15 +7,9 @@
 
   <!-- Styles -->
   <link rel="stylesheet" href="style.css" />
-  <!-- Fallback to guarantee maps are visible even if external CSS is missing -->
-  <style>
-    #indiaSubMapDay1,#indiaSubMapDay2{display:block;width:100%;min-height:580px}
-    #indiaSubMapDay1 path.state,#indiaSubMapDay2 path.state{vector-effect:non-scaling-stroke}
-  </style>
 
   <!-- Libraries -->
   <script defer src="https://d3js.org/d3.v7.min.js"></script>
-  <script defer src="https://unpkg.com/topojson-client@3"></script>
   <script defer src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
 
   <!-- Data & App -->
@@ -27,11 +21,10 @@
     <div id="pdf-area">
 
       <!-- Page 1: Table -->
-      <div class="page page-1">
+      <div class="page">
         <h1 class="center-title">Cloud Coverage Forecast Bulletin</h1>
         <h2 id="forecast-date" class="center-date"></h2>
 
-        <!-- Classification -->
         <div class="cloud-cover-reference">
           <h3>Cloud Cover Classification</h3>
           <table class="cloud-info-table">
@@ -50,17 +43,12 @@
               <tr class="swatch-high"><td>4</td><td>50–75%</td><td>High Cloud Cover</td><td>Broken / Mostly Cloudy</td></tr>
               <tr class="swatch-overcast"><td>5</td><td>75–100%</td><td>Overcast Cloud Cover</td><td>Cloudy / Overcast</td></tr>
             </tbody>
-            <tfoot>
-              <tr>
-                <td colspan="4" class="note-row">Note: This terminology is for local use only.</td>
-              </tr>
-            </tfoot>
+            <tfoot><tr><td colspan="4" class="note-row">Note: This terminology is for local use only.</td></tr></tfoot>
           </table>
         </div>
 
-        <!-- ONE table -->
         <h3 class="table-title" style="text-align:left;">Sub Divisions</h3>
-        <table class="forecast-table subdivision-table" id="subdivision-table">
+        <table class="forecast-table subdivision-table">
           <thead>
             <tr>
               <th>S. No.</th>
@@ -76,7 +64,7 @@
       </div>
 
       <!-- Page 2: Maps -->
-      <div class="page page-2">
+      <div class="page">
         <h3 class="map-label">Day 1 Forecast Map (Sub Division)</h3>
         <div class="map-wrapper">
           <svg id="indiaSubMapDay1" role="img" aria-label="India sub-division map day 1"></svg>
@@ -109,7 +97,7 @@
       </div>
 
       <!-- Page 3: Notes -->
-      <div class="page page-3">
+      <div class="page">
         <h3 style="text-align:left;">Weather System</h3>
         <div id="bulletinInputEnd" class="bulletin-text editable-text" contenteditable="true">
           Add your notes here...
