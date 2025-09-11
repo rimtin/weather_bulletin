@@ -3,127 +3,139 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Cloud Coverage Forecast — Sub Divisions</title>
+  <title>Cloud Coverage Forecast – Subdivision Control</title>
 
-  <!-- Styles -->
   <link rel="stylesheet" href="style.css" />
 
-  <!-- Libraries -->
-  <script defer src="https://d3js.org/d3.v7.min.js"></script>
-  <script defer src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+  <!-- D3 + TopoJSON -->
+  <script src="https://d3js.org/d3.v7.min.js"></script>
+  <script src="https://unpkg.com/topojson-client@3"></script>
 
-  <!-- Data & App -->
+  <!-- html2pdf (bundled html2canvas + jsPDF) -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+
+  <!-- App data + logic -->
   <script defer src="data.js"></script>
   <script defer src="app.js"></script>
 </head>
 <body>
-  <div class="container">
-    <div id="pdf-area">
+  <div id="print-root" class="container">
+    <h1 class="center-title">Cloud Coverage Forecast Bulletin</h1>
+    <h2 id="forecast-date" class="center-date"></h2>
 
-      <!-- Page 1: Table -->
-      <div class="page">
-        <h1 class="center-title">Cloud Coverage Forecast Bulletin</h1>
-        <h2 id="forecast-date" class="center-date"></h2>
+    <!-- Cloud Cover Classification (Excel colors) -->
+    <h3>Cloud Cover Classification</h3>
+    <table class="cloud-info-table">
+      <thead>
+        <tr>
+          <th>S. No.</th>
+          <th>Sky Covered by Clouds</th>
+          <th>Cloud Cover</th>
+          <th>Cloud Type</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr class="swatch-clear"><td>1</td><td>0–10%</td><td>Clear Sky</td><td>No Cloud</td></tr>
+        <tr class="swatch-low"><td>2</td><td>10–30%</td><td>Low Cloud Cover</td><td>Few Clouds</td></tr>
+        <tr class="swatch-medium"><td>3</td><td>30–50%</td><td>Medium Cloud Cover</td><td>Scattered Clouds / Partly Cloudy</td></tr>
+        <tr class="swatch-high"><td>4</td><td>50–75%</td><td>High Cloud Cover</td><td>Broken Clouds / Mostly Cloudy</td></tr>
+        <tr class="swatch-overcast"><td>5</td><td>75–100%</td><td>Overcast Cloud Cover</td><td>Cloudy / Overcast</td></tr>
+      </tbody>
+      <tfoot>
+        <tr>
+          <td colspan="4" class="note-row">Note: This terminology is for local use only.</td>
+        </tr>
+      </tfoot>
+    </table>
 
-        <div class="cloud-cover-reference">
-          <h3>Cloud Cover Classification</h3>
-          <table class="cloud-info-table">
-            <thead>
-              <tr>
-                <th>S. No.</th>
-                <th>Sky Covered by Clouds</th>
-                <th>Cloud Cover</th>
-                <th>Cloud Type</th>
-              </tr>
-            </thead>
-            <tbody>
-              <tr class="swatch-clear"><td>1</td><td>0–10%</td><td>Clear Sky</td><td>No Cloud</td></tr>
-              <tr class="swatch-low"><td>2</td><td>10–30%</td><td>Low Cloud Cover</td><td>Few Clouds</td></tr>
-              <tr class="swatch-medium"><td>3</td><td>30–50%</td><td>Medium Cloud Cover</td><td>Scattered / Partly Cloudy</td></tr>
-              <tr class="swatch-high"><td>4</td><td>50–75%</td><td>High Cloud Cover</td><td>Broken / Mostly Cloudy</td></tr>
-              <tr class="swatch-overcast"><td>5</td><td>75–100%</td><td>Overcast Cloud Cover</td><td>Cloudy / Overcast</td></tr>
-            </tbody>
-            <tfoot><tr><td colspan="4" class="note-row">Note: This terminology is for local use only.</td></tr></tfoot>
-          </table>
+    <!-- Forecast Table (STATE controls) -->
+    <h3 style="margin-top:16px;">State Forecast (Controls)</h3>
+    <table class="forecast-table">
+      <thead>
+        <tr>
+          <th>S. No.</th>
+          <th>State</th>
+          <th>Day 1</th>
+          <th>Day 2</th>
+        </tr>
+      </thead>
+      <tbody id="forecast-table-body"></tbody>
+    </table>
+
+    <!-- Maps Row -->
+    <div class="maps-row">
+      <div class="map-card">
+        <div class="map-card-header">
+          <h3>Day 1 Map</h3>
         </div>
-
-        <h3 class="table-title" style="text-align:left;">Sub Divisions</h3>
-        <table class="forecast-table subdivision-table">
-          <thead>
-            <tr>
-              <th>S. No.</th>
-              <th>State</th>
-              <th>Sub Division</th>
-              <th>No. Solar Site</th>
-              <th>Day 1</th>
-              <th>Day 2</th>
-            </tr>
-          </thead>
-          <tbody id="subdivision-table-body"></tbody>
-        </table>
+        <svg id="indiaMapDay1" viewBox="0 0 860 580" role="img" aria-label="India day 1 forecast map"></svg>
       </div>
 
-      <!-- Page 2: Maps -->
-      <div class="page">
-        <h3 class="map-label">Day 1 Forecast Map (Sub Division)</h3>
-        <div class="map-wrapper">
-          <svg id="indiaSubMapDay1" role="img" aria-label="India sub-division map day 1"></svg>
-          <div class="map-legend">
-            <ul>
-              <li><span class="legend-swatch swatch-clear"></span> Clear Sky</li>
-              <li><span class="legend-swatch swatch-low"></span> Low Cloud Cover</li>
-              <li><span class="legend-swatch swatch-medium"></span> Medium Cloud Cover</li>
-              <li><span class="legend-swatch swatch-high"></span> High Cloud Cover</li>
-              <li><span class="legend-swatch swatch-overcast"></span> Overcast Cloud Cover</li>
-              <li><span class="legend-pattern"></span> No Forecast Available</li>
-            </ul>
-          </div>
+      <div class="map-card">
+        <div class="map-card-header">
+          <h3>Day 2 Map</h3>
         </div>
-
-        <h3 class="map-label">Day 2 Forecast Map (Sub Division)</h3>
-        <div class="map-wrapper">
-          <svg id="indiaSubMapDay2" role="img" aria-label="India sub-division map day 2"></svg>
-          <div class="map-legend">
-            <ul>
-              <li><span class="legend-swatch swatch-clear"></span> Clear Sky</li>
-              <li><span class="legend-swatch swatch-low"></span> Low Cloud Cover</li>
-              <li><span class="legend-swatch swatch-medium"></span> Medium Cloud Cover</li>
-              <li><span class="legend-swatch swatch-high"></span> High Cloud Cover</li>
-              <li><span class="legend-swatch swatch-overcast"></span> Overcast Cloud Cover</li>
-              <li><span class="legend-pattern"></span> No Forecast Available</li>
-            </ul>
-          </div>
-        </div>
+        <svg id="indiaMapDay2" viewBox="0 0 860 580" role="img" aria-label="India day 2 forecast map"></svg>
       </div>
 
-      <!-- Page 3: Notes -->
-      <div class="page">
-        <h3 style="text-align:left;">Weather System</h3>
-        <div id="bulletinInputEnd" class="bulletin-text editable-text" contenteditable="true">
-          Add your notes here...
-        </div>
+      <!-- Single, reusable legend block -->
+      <div class="map-legend" id="mapLegend">
+        <h4>Legend</h4>
+        <ul id="legendList">
+          <!-- Dynamically filled from forecastColors -->
+        </ul>
+        <div class="legend-line"></div>
+        <ul>
+          <li><span class="legend-pattern"></span> No Forecast / Excluded</li>
+        </ul>
       </div>
+    </div>
 
+    <!-- Subdivision Chart Table (display only) -->
+    <h3 style="margin-top:16px;">Subdivision Chart (Display)</h3>
+    <table class="forecast-table subdivision-table">
+      <thead>
+        <tr>
+          <th>S. No.</th>
+          <th>State</th>
+          <th>Sub S. No.</th>
+          <th>Sub-Division</th>
+          <th>Note</th>
+        </tr>
+      </thead>
+      <tbody id="subdivision-table-body"></tbody>
+    </table>
+
+    <!-- Notes -->
+    <h3 style="text-align:left; margin-top:16px;">Weather System</h3>
+    <div id="bulletinInputEnd" class="bulletin-text" contenteditable="true">
+      Add your notes here...
+    </div>
+
+    <!-- Actions -->
+    <div class="actions">
+      <button id="downloadBtn" type="button">Download as PDF</button>
     </div>
   </div>
 
-  <div class="download-page">
-    <button id="downloadBtn" onclick="downloadPDF()">Download PDF</button>
-  </div>
-
   <script>
-    function downloadPDF() {
-      const el = document.getElementById("pdf-area");
-      if (!el) return alert("PDF container not found!");
-      html2pdf().set({
-        margin: 0.3,
-        filename: "Cloud_Forecast_Bulletin.pdf",
-        image: { type: "jpeg", quality: 0.98 },
-        html2canvas: { scale: 2, useCORS: true, allowTaint: true, logging: false },
-        jsPDF: { unit: "in", format: "a4", orientation: "portrait" },
-        pagebreak: { mode: ["avoid-all", "css", "legacy"] }
-      }).from(el).save();
-    }
+    // Wire up PDF button (html2pdf)
+    document.addEventListener("DOMContentLoaded", () => {
+      const btn = document.getElementById("downloadBtn");
+      btn?.addEventListener("click", () => {
+        const el = document.getElementById("print-root");
+        if (!el) return alert("Printable container not found.");
+        const opts = {
+          margin:       0.25,                         // inches
+          filename:     "Cloud_Forecast_Bulletin.pdf",
+          image:        { type: "jpeg", quality: 0.98 },
+          html2canvas:  { scale: 2, useCORS: true, allowTaint: true, logging: false },
+          jsPDF:        { unit: "in", format: "a4", orientation: "portrait" },
+          pagebreak:    { mode: ["avoid-all", "css", "legacy"] }
+        };
+        html2pdf().set(opts).from(el).save();
+      });
+    });
   </script>
 </body>
 </html>
