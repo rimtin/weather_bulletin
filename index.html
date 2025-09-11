@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Cloud Coverage Forecast – Subdivision Control</title>
+  <title>Cloud Coverage Forecast – Sub-Division Control</title>
 
   <link rel="stylesheet" href="style.css" />
 
@@ -23,7 +23,7 @@
     <h1 class="center-title">Cloud Coverage Forecast Bulletin</h1>
     <h2 id="forecast-date" class="center-date"></h2>
 
-    <!-- Cloud Cover Classification (Excel colors) -->
+    <!-- 1) Cloud description table -->
     <h3>Cloud Cover Classification</h3>
     <table class="cloud-info-table">
       <thead>
@@ -48,13 +48,14 @@
       </tfoot>
     </table>
 
-    <!-- Forecast Table (STATE controls) -->
-    <h3 style="margin-top:16px;">State Forecast (Controls)</h3>
-    <table class="forecast-table">
+    <!-- 2) Table: State, Sub-Division, Day1, Day2 -->
+    <h3 style="margin-top:16px;">Sub-Division Forecast (Controls)</h3>
+    <table class="forecast-table subdivision-table">
       <thead>
         <tr>
           <th>S. No.</th>
           <th>State</th>
+          <th>Sub-Division</th>
           <th>Day 1</th>
           <th>Day 2</th>
         </tr>
@@ -62,52 +63,20 @@
       <tbody id="forecast-table-body"></tbody>
     </table>
 
-    <!-- Maps Row -->
-    <div class="maps-row">
-      <div class="map-card">
-        <div class="map-card-header">
-          <h3>Day 1 Map</h3>
-        </div>
-        <svg id="indiaMapDay1" viewBox="0 0 860 580" role="img" aria-label="India day 1 forecast map"></svg>
-      </div>
-
-      <div class="map-card">
-        <div class="map-card-header">
-          <h3>Day 2 Map</h3>
-        </div>
-        <svg id="indiaMapDay2" viewBox="0 0 860 580" role="img" aria-label="India day 2 forecast map"></svg>
-      </div>
-
-      <!-- Single, reusable legend block -->
-      <div class="map-legend" id="mapLegend">
-        <h4>Legend</h4>
-        <ul id="legendList">
-          <!-- Dynamically filled from forecastColors -->
-        </ul>
-        <div class="legend-line"></div>
-        <ul>
-          <li><span class="legend-pattern"></span> No Forecast / Excluded</li>
-        </ul>
-      </div>
+    <!-- 3) Map 1 -->
+    <h3>Map 1 – Projection of Division Weather Forecast (Day 1)</h3>
+    <div class="map-block">
+      <svg id="indiaMapDay1" viewBox="0 0 860 580" role="img" aria-label="India day 1 forecast map"></svg>
     </div>
 
-    <!-- Subdivision Chart Table (display only) -->
-    <h3 style="margin-top:16px;">Subdivision Chart (Display)</h3>
-    <table class="forecast-table subdivision-table">
-      <thead>
-        <tr>
-          <th>S. No.</th>
-          <th>State</th>
-          <th>Sub S. No.</th>
-          <th>Sub-Division</th>
-          <th>Note</th>
-        </tr>
-      </thead>
-      <tbody id="subdivision-table-body"></tbody>
-    </table>
+    <!-- 4) Map 2 -->
+    <h3>Map 2 – Projection of Division Weather Forecast (Day 2)</h3>
+    <div class="map-block">
+      <svg id="indiaMapDay2" viewBox="0 0 860 580" role="img" aria-label="India day 2 forecast map"></svg>
+    </div>
 
-    <!-- Notes -->
-    <h3 style="text-align:left; margin-top:16px;">Weather System</h3>
+    <!-- 5) Dialog box (notes) -->
+    <h3 style="text-align:left; margin-top:16px;">Dialog / Notes</h3>
     <div id="bulletinInputEnd" class="bulletin-text" contenteditable="true">
       Add your notes here...
     </div>
@@ -119,19 +88,18 @@
   </div>
 
   <script>
-    // Wire up PDF button (html2pdf)
+    // PDF export
     document.addEventListener("DOMContentLoaded", () => {
       const btn = document.getElementById("downloadBtn");
       btn?.addEventListener("click", () => {
         const el = document.getElementById("print-root");
         if (!el) return alert("Printable container not found.");
         const opts = {
-          margin:       0.25,                         // inches
-          filename:     "Cloud_Forecast_Bulletin.pdf",
-          image:        { type: "jpeg", quality: 0.98 },
-          html2canvas:  { scale: 2, useCORS: true, allowTaint: true, logging: false },
-          jsPDF:        { unit: "in", format: "a4", orientation: "portrait" },
-          pagebreak:    { mode: ["avoid-all", "css", "legacy"] }
+          margin: 0.25, filename: "Cloud_Forecast_Bulletin.pdf",
+          image: { type: "jpeg", quality: 0.98 },
+          html2canvas: { scale: 2, useCORS: true, allowTaint: true, logging: false },
+          jsPDF: { unit: "in", format: "a4", orientation: "portrait" },
+          pagebreak: { mode: ["avoid-all", "css", "legacy"] }
         };
         html2pdf().set(opts).from(el).save();
       });
