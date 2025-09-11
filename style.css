@@ -8,7 +8,7 @@ body { font-family: Arial, sans-serif; background: #f2f2f2; display: flex; justi
 .center-date  { font-size: 14px; text-align: center; margin-bottom: 10px; }
 h3 { font-size: 16px; margin: 12px 0 8px; }
 
-/* Notes block */
+/* Notes / dialog box */
 .bulletin-text { border: 1px solid #ddd; padding: 10px; min-height: 120px; background: #fafafa; line-height: 1.4; border-radius: 8px; }
 
 /* Tables */
@@ -17,10 +17,8 @@ th, td { border: 1px solid #ddd; padding: 8px 10px; font-size: 13px; }
 th { background: #f7f7f7; text-align: center; }
 tbody tr:nth-child(even) { background: #fafafa; }
 tbody tr:hover { background: #f0f7ff; }
-
-.cloud-info-table td:nth-child(1), .cloud-info-table th:nth-child(1),
-.subdivision-table td:nth-child(1), .subdivision-table th:nth-child(1),
-.subdivision-table td:nth-child(3), .subdivision-table th:nth-child(3) { text-align: center; }
+.cloud-info-table td:nth-child(1), .cloud-info-table th:nth-child(1) { text-align: center; }
+.subdivision-table td:nth-child(1), .subdivision-table th:nth-child(1) { text-align: center; }
 
 /* Swatches to match Excel-like palette */
 .swatch-clear    { background:#A7D8EB !important; color:#003244; font-weight:700; }
@@ -36,24 +34,13 @@ tbody tr:hover { background: #f0f7ff; }
 .forecast-table select { width: 100%; padding: 6px; border-radius: 6px; border: 1px solid #ccc; background: #fff; font-size: 13px; }
 .forecast-table select:hover { outline: 2px solid #74b8ff; outline-offset: 1px; }
 
-/* Maps row layout */
-.maps-row { display: grid; grid-template-columns: 1fr 1fr 200px; gap: 12px; align-items: start; }
-.map-card { border: 1px solid #ddd; border-radius: 8px; overflow: hidden; background: #fff; }
-.map-card-header { background: #f7f7f7; border-bottom: 1px solid #ddd; padding: 8px 10px; }
+/* Map blocks (stacked vertically) */
+.map-block { border: 1px solid #ddd; border-radius: 8px; overflow: hidden; background: #fff; margin-bottom: 12px; }
 svg { width: 100%; height: 520px; display: block; }
 
-/* Legend */
-.map-legend { border: 1px solid #ddd; border-radius: 8px; padding: 10px; background: #fff; position: sticky; top: 8px; }
-.map-legend h4 { margin-bottom: 6px; }
-.map-legend ul { list-style: none; margin-bottom: 8px; }
-.map-legend li { display: flex; align-items: center; gap: 8px; font-size: 13px; margin: 6px 0; }
-.legend-swatch { width: 16px; height: 16px; border: 1px solid #999; border-radius: 4px; display: inline-block; }
-.legend-line { height: 1px; background: #e6e6e6; margin: 6px 0; }
-.legend-pattern { width: 16px; height: 16px; border: 1px solid #999; background-image: repeating-linear-gradient(45deg, #999 0, #999 1px, transparent 1px, transparent 6px); border-radius: 4px; display: inline-block; }
-
-/* SVG state styling */
-.state { stroke: #999; stroke-width: 0.75; cursor: pointer; transition: filter 0.15s ease, stroke-width 0.15s ease; }
-.state:hover { filter: drop-shadow(0 0 4px rgba(0,0,0,0.3)); stroke-width: 1.35; }
+/* SVG sub-division styling */
+.subdiv { stroke: #999; stroke-width: 0.75; cursor: pointer; transition: filter 0.15s ease, stroke-width 0.15s ease; }
+.subdiv:hover { filter: drop-shadow(0 0 4px rgba(0,0,0,0.3)); stroke-width: 1.35; }
 
 /* Icon labels */
 .map-icon { pointer-events: none; font-size: 16px; }
