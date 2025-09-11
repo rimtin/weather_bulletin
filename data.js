@@ -1,8 +1,26 @@
-// === States shown in the main forecast (Bihar removed) ===
-window.states = [
-  "Punjab", "Rajasthan", "Gujarat", "Uttar Pradesh",
-  "Madhya Pradesh", "Chhattisgarh", "Maharashtra",
-  "Telangana", "Andhra Pradesh", "Karnataka", "Tamil Nadu"
+// === Sub-divisions master list (Bihar excluded) ===
+// IMPORTANT: The 'name' must match your GeoJSON sub-division label.
+window.subdivisions = [
+  { state: "Punjab",            name: "Punjab" },
+  { state: "Rajasthan",         name: "West Rajasthan" },
+  { state: "Rajasthan",         name: "East Rajasthan" },
+  { state: "Gujarat",           name: "Saurashtra & Kutch" },
+  { state: "Gujarat",           name: "Rest of Gujarat" },
+  { state: "Uttar Pradesh",     name: "West UP" },
+  { state: "Uttar Pradesh",     name: "East UP" },
+  { state: "Madhya Pradesh",    name: "West Madhya Pradesh" },
+  { state: "Madhya Pradesh",    name: "East Madhya Pradesh" },
+  { state: "Chhattisgarh",      name: "Chhattisgarh" },
+  { state: "Maharashtra",       name: "North Konkan" },
+  { state: "Maharashtra",       name: "South Konkan" },
+  { state: "Maharashtra",       name: "Madhya Maharashtra" },
+  { state: "Maharashtra",       name: "Marathwada" },
+  { state: "Telangana",         name: "Telangana" },
+  { state: "Andhra Pradesh",    name: "Andhra Pradesh" },
+  { state: "Andhra Pradesh",    name: "Rayalaseema (SW-AP)" },
+  { state: "Karnataka",         name: "North Karnataka" },
+  { state: "Karnataka",         name: "South Karnataka" },
+  { state: "Tamil Nadu",        name: "Tamil Nadu" }
 ];
 
 // Excel-style palette
@@ -23,31 +41,6 @@ window.forecastIcons = {
   "High Cloud Cover": "🌥️",
   "Overcast Cloud Cover": "☁️"
 };
-
-// Subdivision registry (Bihar intentionally excluded)
-// (Display-only chart below; map coloring is driven by STATES.)
-window.subdivisions = [
-  { subNo:  1, state: "Punjab",            name: "Punjab" },
-  { subNo:  2, state: "Rajasthan",         name: "West Rajasthan" },
-  { subNo:  3, state: "Rajasthan",         name: "East Rajasthan" },
-  { subNo:  4, state: "Gujarat",           name: "Saurashtra & Kutch" },
-  { subNo:  5, state: "Gujarat",           name: "Rest of Gujarat" },
-  { subNo:  6, state: "Uttar Pradesh",     name: "West UP" },
-  { subNo:  7, state: "Uttar Pradesh",     name: "East UP" },
-  { subNo:  8, state: "Madhya Pradesh",    name: "West Madhya Pradesh" },
-  { subNo:  9, state: "Madhya Pradesh",    name: "East Madhya Pradesh" },
-  { subNo: 10, state: "Chhattisgarh",      name: "Chhattisgarh" },
-  { subNo: 11, state: "Maharashtra",       name: "North Konkan" },
-  { subNo: 12, state: "Maharashtra",       name: "South Konkan" },
-  { subNo: 13, state: "Maharashtra",       name: "Madhya Maharashtra" },
-  { subNo: 14, state: "Maharashtra",       name: "Marathwada" },
-  { subNo: 15, state: "Telangana",         name: "Telangana" },
-  { subNo: 16, state: "Andhra Pradesh",    name: "Andhra Pradesh" },
-  { subNo: 17, state: "Andhra Pradesh",    name: "Rayalaseema (SW-AP)" },
-  { subNo: 18, state: "Karnataka",         name: "North Karnataka" },
-  { subNo: 19, state: "Karnataka",         name: "South Karnataka" },
-  { subNo: 20, state: "Tamil Nadu",        name: "Tamil Nadu" }
-];
 
 // IST date helper
 function updateISTDate() {
