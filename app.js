@@ -1,7 +1,7 @@
-// === Sub-Division app logic (maps now always visible with fitExtent) ===
+// === Sub-Division app logic (always-visible maps) ===
 
-// Global stores (per-day map)
-window.subdivCentroids = {}; // { "#indiaMapDay1": { "Subdiv Name": [x,y], ... }, ... }
+// Per-map centroid store
+window.subdivCentroids = {};
 
 // Layout
 const W = 860, H = 580;
@@ -19,24 +19,23 @@ function normalizeName(name) {
 }
 function getProp(obj, keys) {
   if (!obj) return "";
-  for (const k of keys) {
-    if (obj[k] != null && String(obj[k]).trim() !== "") return String(obj[k]);
-  }
+  for (const k of keys) if (obj[k] != null && String(obj[k]).trim() !== "") return String(obj[k]);
   return "";
 }
 function getStateName(props) {
   return getProp(props, ["ST_NM","st_nm","STATE","STATE_UT","NAME_1","state_name","State"]);
 }
 function getSubdivName(props) {
-  // Add/adjust keys to match your file if needed
-  return getProp(
-    props,
-    ["SUBDIV","SUBDIV_NAME","SUBDIVISION","SubDiv","SUBDIV_N","NAME_2","name","Name","Division","DIVISION"]
-  );
+  // Add/adjust keys if your file is different
+  return getProp(props, [
+    "SUBDIV","SUBDIV_NAME","SUBDIVISION","SubDiv","SUBDIV_N",
+    "NAME_2","name","Name","Division","DIVISION","SUB_DIV"
+  ]);
 }
 
 // Preferred sub-division file locations (first that loads is used)
 const SUBDIV_GEO_URLS = [
+  // If index.html and the .geojson are in the same folder, this one will hit:
   "indian_met_zones.geojson",
   "assets/indian_met_zones.geojson",
   "weather_bulletin/indian_met_zones.geojson",
@@ -48,9 +47,9 @@ const SUBDIV_GEO_URLS = [
 async function fetchFirst(urls) {
   for (const url of urls) {
     try {
-      const resp = await fetch(url, { cache: "no-store" });
-      if (!resp.ok) continue;
-      const data = await resp.json();
+      const r = await fetch(url, { cache: "no-store" });
+      if (!r.ok) continue;
+      const data = await r.json();
       console.log("[Map] Loaded:", url);
       return data;
     } catch (e) {
@@ -60,12 +59,30 @@ async function fetchFirst(urls) {
   throw new Error("Could not load any sub-division GeoJSON URLs");
 }
 
+function pickProjectionFor(fc) {
+  // Detect if coordinates look like lon/lat or projected meters.
+  // If width/height >> typical lon/lat span, assume projected and use Identity.
+  const [[minX, minY], [maxX, maxY]] = d3.geoBounds(fc);
+  const width = maxX - minX;
+  const height = maxY - minY;
+
+  // Heuristic thresholds (lon/lat for India is roughly 65..98, 6..37)
+  const looksLikeLonLat = width < 200 && height < 120 && minX >= -180 && maxX <= 180 && minY >= -90 && maxY <= 90;
+
+  if (looksLikeLonLat) {
+    return d3.geoMercator().fitExtent([[PAD, PAD], [W - PAD, H - PAD]], fc);
+  } else {
+    // For projected CRS, draw in screen space using Identity (flip Y)
+    return d3.geoIdentity().reflectY(true).fitExtent([[PAD, PAD], [W - PAD, H - PAD]], fc);
+  }
+}
+
 // Draw sub-division map into #indiaMapDay1 or #indiaMapDay2
 async function drawMap(svgId) {
   const svg = d3.select(svgId);
   svg.selectAll("*").remove();
 
-  // Hatch for excluded/no-forecast
+  // Hatch fill for excluded
   const defs = svg.append("defs");
   defs.append("pattern")
     .attr("id", "diagonalHatch")
@@ -82,7 +99,6 @@ async function drawMap(svgId) {
   try {
     const geo = await fetchFirst(SUBDIV_GEO_URLS);
     if (geo.type === "Topology") {
-      // TopoJSON fallback (choose the first object)
       const key = Object.keys(geo.objects)[0];
       features = topojson.feature(geo, geo.objects[key]).features;
     } else {
@@ -97,15 +113,13 @@ async function drawMap(svgId) {
     alert("Sub-division file loaded but had 0 features.");
     return;
   }
-  console.log(`[Map] Features: ${features.length}`);
 
-  // --- KEY FIX: use fitExtent to guarantee a correct on-screen projection ---
   const fc = { type: "FeatureCollection", features };
-  const projection = d3.geoMercator().fitExtent([[PAD, PAD], [W - PAD, H - PAD]], fc);
+  const projection = pickProjectionFor(fc);
   const path = d3.geoPath(projection);
 
-  // Allowed sub-divisions come from the table list
-  const allowed = new Set((window.subdivisions || []).map(s => normalizeName(s.name)));
+  // Allowed sub-divisions = those listed in the table
+  const allowSet = new Set((window.subdivisions || []).map(s => normalizeName(s.name)));
 
   // Draw shapes
   svg.append("g")
@@ -118,10 +132,7 @@ async function drawMap(svgId) {
     .attr("data-state",  d => getStateName(d.properties))
     .attr("id", d => "sd-" + normalizeName(getSubdivName(d.properties)).replace(/[^a-z0-9]+/g, "-"))
     .attr("d", path)
-    .attr("fill", d => {
-      const nm = normalizeName(getSubdivName(d.properties));
-      return allowed.has(nm) ? "#eee" : "url(#diagonalHatch)";
-    })
+    .attr("fill", d => allowSet.has(normalizeName(getSubdivName(d.properties))) ? "#eee" : "url(#diagonalHatch)")
     .on("mouseover", function() { d3.select(this).raise(); });
 
   // Centroids for icons
@@ -131,14 +142,14 @@ async function drawMap(svgId) {
     window.subdivCentroids[svgId][n] = path.centroid(f);
   });
 
-  // After the second map, initialize the UI (once)
+  // After the second map, initialize UI once
   if (svgId === "#indiaMapDay2") {
     initializeForecastTable();
     updateMapColors();
   }
 }
 
-// === TABLES (Sub-division controls) ===
+// === TABLE (Sub-division controls) ===
 function initializeForecastTable() {
   const tbody = document.getElementById("forecast-table-body");
   if (!tbody) return;
@@ -150,7 +161,6 @@ function initializeForecastTable() {
   (window.subdivisions || []).forEach(row => {
     const tr = document.createElement("tr");
 
-    // Day selectors
     const sel1 = document.createElement("select");
     const sel2 = document.createElement("select");
     [sel1, sel2].forEach(sel => {
@@ -174,7 +184,6 @@ function initializeForecastTable() {
     tr.appendChild(td1);
     tr.appendChild(td2);
 
-    // Hover highlight on both maps
     tr.addEventListener("mouseenter", () => highlightSubdiv(row.name, true));
     tr.addEventListener("mouseleave", () => highlightSubdiv(row.name, false));
 
