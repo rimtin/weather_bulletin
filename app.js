@@ -1,18 +1,14 @@
-// === Map coloring that works with your district GeoJSON ===
-// If a district→subdivision CSV is found, we color by your 20 sub-divisions.
-// Otherwise we fall back to coloring each district directly (so you see colors now).
+// === Sub-division coloring for exactly the 20 provided names ===
 
-// Globals
 const W = 860, H = 580, PAD = 18;
-let g_features = [];                 // GeoJSON features
-let g_stateKey = "ST_NM";            // detected state field
-let g_nameKey  = "name";             // detected district (feature name) field
-let g_hasMapping = false;            // true if CSV was found
-let g_map = new Map();               // (state||district) -> subdivision label (normalized)
-let g_centroids = { "#indiaMapDay1": {}, "#indiaMapDay2": {} }; // per map, centroid by (state||district)
-let g_index     = { "#indiaMapDay1": new Map(), "#indiaMapDay2": new Map() }; // per map, norm(name)->[nodes]
+let SUBDIV_KEY = "name";      // detected from GeoJSON
+let STATE_KEY  = "ST_NM";     // detected from GeoJSON
 
-// ---------- helpers ----------
+// Per-map stores
+const nameIndex   = { "#indiaMapDay1": new Map(), "#indiaMapDay2": new Map() }; // norm(name) -> [DOM nodes]
+const centroids   = { "#indiaMapDay1": {},         "#indiaMapDay2": {} };        // norm(name) -> [x,y]
+
+// ---- helpers ----
 const cssEscape = s => (window.CSS && CSS.escape) ? CSS.escape(String(s ?? "")) :
   String(s ?? "").replace(/'/g,"\\'").replace(/\"/g,'\\\"');
 
@@ -25,39 +21,25 @@ const norm = s => String(s || "")
   .replace(/\s+/g, " ")
   .trim();
 
-const getProp = (o, keys) => {
-  if (!o) return "";
-  for (const k of keys) if (o[k] != null && String(o[k]).trim() !== "") return String(o[k]);
-  return "";
-};
-
-// detect keys from a sample feature
-function detectKeys(features) {
-  const sKeys = ["ST_NM","st_nm","STATE","STATE_UT","NAME_1","state_name","State"];
-  const dKeys = ["SUBDIV","SUBDIV_NAME","SUBDIVISION","SubDiv","SUBDIV_N","NAME_2","name","Name","Division","DIVISION","SUB_DIV","SUBDIVISION_NM","SUBDIV_NM"];
-  const sample = features[0]?.properties || {};
-  const all = Object.keys(sample);
-  g_stateKey = sKeys.find(k => k in sample) || all.find(k => /state/i.test(k)) || "STATE";
-  g_nameKey  = dKeys.find(k => k in sample) || all.find(k => /(name|district|sub|div|zone|region)/i.test(k)) || "name";
-  console.log("[Map] keys:", { stateKey: g_stateKey, subdivKey: g_nameKey });
-}
-
-// alias your short labels → IMD official names (so CSV & table align)
-function aliasSubdivLabel(s) {
+// Small alias to absorb the usual spelling differences if they exist
+function aliasKey(s) {
   let t = norm(s);
-  t = t.replace(/\bup\b/g, "uttar pradesh");
-  if (t === "rest of gujarat") t = "gujarat region";
-  if (t === "north karnataka") t = "north interior karnataka";
-  if (t === "south karnataka") t = "south interior karnataka";
-  if (t === "north konkan" || t === "south konkan") t = "konkan and goa";
-  if (t === "andhra pradesh") t = "coastal andhra pradesh";
-  if (t.startsWith("rayalaseema")) t = "rayalaseema";
-  if (t === "tamil nadu") t = "tamil nadu puducherry and karaikal";
-  t = t.replace(/saurashtra\s*and\s*kutch/g, "saurashtra and kutch");
+  // handle Kachh/Kachchh/Kutch variants gracefully
+  t = t.replace(/\bkachh\b/g, "kachchh").replace(/\bkutch\b/g, "kachchh");
+  // NI/SI punctuation collapses to tokens by norm(), so fine.
   return t;
 }
 
-// fit projection that always works
+function detectKeys(features) {
+  const sKeys = ["ST_NM","st_nm","STATE","STATE_UT","NAME_1","state_name","State"];
+  const dKeys = ["name","SUBDIV","SUBDIV_NAME","SUBDIVISION","Division","SUB_DIV","NAME_2","Name","DIVISION"];
+  const sample = features[0]?.properties || {};
+  const all = Object.keys(sample);
+  STATE_KEY  = sKeys.find(k => k in sample) || all.find(k => /state/i.test(k)) || STATE_KEY;
+  SUBDIV_KEY = dKeys.find(k => k in sample) || all.find(k => /(name|div|zone|region)/i.test(k)) || SUBDIV_KEY;
+  console.log("[Map] keys:", { stateKey: STATE_KEY, subdivKey: SUBDIV_KEY });
+}
+
 function pickProjection(fc) {
   const [[minX,minY],[maxX,maxY]] = d3.geoBounds(fc);
   const w = maxX - minX, h = maxY - minY;
@@ -67,7 +49,7 @@ function pickProjection(fc) {
     : d3.geoIdentity().reflectY(true).fitExtent([[PAD,PAD],[W-PAD,H-PAD]], fc);
 }
 
-// ---------- data sources ----------
+// Data sources
 const GEO_URLS = [
   "indian_met_zones.geojson",
   "assets/indian_met_zones.geojson",
@@ -76,17 +58,8 @@ const GEO_URLS = [
   "https://raw.githubusercontent.com/rimtin/weather_bulletin/main/indian_met_zones.geojson",
   "https://cdn.jsdelivr.net/gh/rimtin/weather_bulletin@main/indian_met_zones.geojson"
 ];
-// CSV: state,district,subdivision  (see example below)
-const CSV_URLS = [
-  "district_to_subdiv.csv",
-  "assets/district_to_subdiv.csv",
-  "weather_bulletin/district_to_subdiv.csv",
-  "https://rimtin.github.io/weather_bulletin/district_to_subdiv.csv",
-  "https://raw.githubusercontent.com/rimtin/weather_bulletin/main/district_to_subdiv.csv",
-  "https://cdn.jsdelivr.net/gh/rimtin/weather_bulletin@main/district_to_subdiv.csv"
-];
 
-async function fetchFirstJSON(urls){
+async function fetchFirst(urls){
   for (const url of urls){
     try{
       const r = await fetch(url, { cache: "no-store" });
@@ -98,26 +71,13 @@ async function fetchFirstJSON(urls){
   }
   throw new Error("No GeoJSON found");
 }
-async function fetchFirstCSV(urls){
-  for (const url of urls){
-    try{
-      const r = await fetch(url, { cache: "no-store" });
-      if (!r.ok) continue;
-      const txt = await r.text();
-      const rows = d3.csvParse(txt);
-      console.log("[Map] Mapping CSV:", url, `(${rows.length} rows)`);
-      return rows;
-    }catch{}
-  }
-  return null; // mapping is optional
-}
 
-// ---------- map draw ----------
+// ---- draw one map ----
 async function drawMap(svgId){
   const svg = d3.select(svgId);
   svg.selectAll("*").remove();
 
-  // hatch for excluded
+  // hatch
   const defs = svg.append("defs");
   defs.append("pattern")
     .attr("id","diagonalHatch").attr("patternUnits","userSpaceOnUse")
@@ -127,27 +87,20 @@ async function drawMap(svgId){
   // load features
   let features = [];
   try{
-    const geo = await fetchFirstJSON(GEO_URLS);
-    if (geo.type === "Topology"){
-      const key = Object.keys(geo.objects)[0];
-      features = topojson.feature(geo, geo.objects[key]).features;
-    } else {
-      features = geo.features || [];
-    }
+    const geo = await fetchFirst(GEO_URLS);
+    features = (geo.type === "Topology")
+      ? topojson.feature(geo, geo.objects[Object.keys(geo.objects)[0]]).features
+      : (geo.features || []);
   }catch(e){
-    alert("Could not load sub-division map data");
-    console.error(e);
-    return;
+    alert("Could not load sub-division map data"); console.error(e); return;
   }
   if (!features.length){ alert("GeoJSON has 0 features"); return; }
   console.log("[Map] Features:", features.length);
 
-  // detect keys
   detectKeys(features);
-  g_features = features;
 
   // projection
-  const fc = { type: "FeatureCollection", features };
+  const fc = { type:"FeatureCollection", features };
   const projection = pickProjection(fc);
   const path = d3.geoPath(projection);
 
@@ -155,217 +108,128 @@ async function drawMap(svgId){
   const g = svg.append("g").attr("class","subdivs");
   const paths = g.selectAll("path").data(features).join("path")
     .attr("class","subdiv")
-    .attr("data-state",  d => d.properties?.[g_stateKey] ?? "")
-    .attr("data-name",   d => d.properties?.[g_nameKey]  ?? "")
+    .attr("data-state", d => d.properties?.[STATE_KEY]  ?? "")
+    .attr("data-name",  d => d.properties?.[SUBDIV_KEY] ?? "")
     .attr("d", path)
     .attr("fill", "url(#diagonalHatch)")
     .on("mouseover", function(){ d3.select(this).raise(); });
 
-  // index + centroids (by "state||district")
+  // index polygons by normalized name
   const idx = new Map();
   const cents = {};
   paths.each(function(d){
-    const state = String(d.properties?.[g_stateKey] ?? "");
-    const name  = String(d.properties?.[g_nameKey]  ?? "");
-    const key = `${norm(state)}||${norm(name)}`;
-    if (!idx.has(key)) idx.set(key, []);
-    idx.get(key).push(this);
-    cents[key] = path.centroid(d);
+    const raw = d.properties?.[SUBDIV_KEY];
+    if (!raw) return;
+    const k = aliasKey(raw);
+    (idx.get(k) || idx.set(k, []).get(k)).push(this);
+    cents[k] = path.centroid(d);
   });
-  g_index[svgId] = idx;
-  g_centroids[svgId] = cents;
+  nameIndex[svgId] = idx;
+  centroids[svgId] = cents;
 
-  // after second map: load optional CSV, build table, paint
-  if (svgId === "#indiaMapDay2"){
-    await loadMappingCSV();        // sets g_hasMapping & g_map
-    buildControlsTable();          // table from mapping or from GeoJSON
-    // default selects to first option (so colors appear immediately)
+  // after second map, build the fixed 20-row table and paint
+  if (svgId === "#indiaMapDay2") {
+    buildFixedTable();
+    // Pre-select the first palette value so colors appear immediately
     document.querySelectorAll("#forecast-table-body select").forEach(sel => { if (sel.options.length) sel.selectedIndex = 0; });
     updateMapColors();
   }
 }
 
-// ---------- optional CSV mapping (district -> sub-division) ----------
-async function loadMappingCSV() {
-  const rows = await fetchFirstCSV(CSV_URLS);
-  g_map.clear();
-  g_hasMapping = !!rows && rows.length > 0;
-
-  if (!g_hasMapping) {
-    console.warn("[Map] No district_to_subdiv.csv found — fallback to district-level coloring.");
-    return;
-  }
-  // Expect columns: state, district, subdivision
-  rows.forEach(r => {
-    const s = norm(r.state);
-    const d = norm(r.district);
-    const sub = aliasSubdivLabel(r.subdivision); // normalize user/IMD names
-    if (!s || !d || !sub) return;
-    g_map.set(`${s}||${d}`, sub);
-  });
-}
-
-// ---------- table (controls) ----------
-function buildControlsTable(){
+// ---- table (fixed 20) ----
+function buildFixedTable(){
   const tbody = document.getElementById("forecast-table-body");
   if (!tbody) return;
   tbody.innerHTML = "";
 
   const opts = window.forecastOptions || [];
+  let i = 1;
 
-  if (g_hasMapping) {
-    // use the desired sub-division list from data.js, normalized via aliasSubdivLabel
-    let i = 1;
-    (window.subdivisions || []).forEach(row => {
-      const label = row.name;                       // e.g., "West UP"
-      const imd   = aliasSubdivLabel(label);       // e.g., "West Uttar Pradesh"
-      const tr = document.createElement("tr");
+  (window.subdivisions || []).forEach(row => {
+    const tr = document.createElement("tr");
 
-      const s1 = document.createElement("select");
-      const s2 = document.createElement("select");
-      [s1,s2].forEach(sel=>{
-        opts.forEach(o=>{ const op = document.createElement("option"); op.value=o; op.textContent=o; sel.appendChild(op); });
-        sel.addEventListener("change", updateMapColors);
-      });
-
-      tr.innerHTML = `
-        <td>${i++}</td>
-        <td>${row.state}</td>
-        <td>${label}</td>
-      `;
-      const td1 = document.createElement("td");
-      const td2 = document.createElement("td");
-      td1.appendChild(s1); td2.appendChild(s2);
-      tr.appendChild(td1); tr.appendChild(td2);
-
-      tr.dataset.group = imd; // store normalized IMD label for fast lookup
-      tbody.appendChild(tr);
+    const s1 = document.createElement("select");
+    const s2 = document.createElement("select");
+    [s1,s2].forEach(sel=>{
+      opts.forEach(o=>{ const op = document.createElement("option"); op.value=o; op.textContent=o; sel.appendChild(op); });
+      sel.addEventListener("change", updateMapColors);
     });
 
-  } else {
-    // CSV not present: build a table from the GeoJSON districts so colors work immediately
-    let i = 1;
-    // make a unique list of (state, district) pairs
-    const seen = new Set();
-    g_features.forEach(f => {
-      const s = String(f.properties?.[g_stateKey] ?? "");
-      const n = String(f.properties?.[g_nameKey]  ?? "");
-      const k = `${s}||${n}`;
-      if (seen.has(k)) return;
-      seen.add(k);
+    tr.innerHTML = `
+      <td>${i++}</td>
+      <td>${row.state}</td>
+      <td>${row.name}</td>
+    `;
+    const td1 = document.createElement("td");
+    const td2 = document.createElement("td");
+    td1.appendChild(s1); td2.appendChild(s2);
+    tr.appendChild(td1); tr.appendChild(td2);
 
-      const tr = document.createElement("tr");
-      const s1 = document.createElement("select");
-      const s2 = document.createElement("select");
-      [s1,s2].forEach(sel=>{
-        opts.forEach(o=>{ const op = document.createElement("option"); op.value=o; op.textContent=o; sel.appendChild(op); });
-        sel.addEventListener("change", updateMapColors);
-      });
+    tr.addEventListener("mouseenter", () => highlight(row.name, true));
+    tr.addEventListener("mouseleave", () => highlight(row.name, false));
 
-      tr.innerHTML = `
-        <td>${i++}</td>
-        <td>${s}</td>
-        <td>${n}</td>
-      `;
-      const td1 = document.createElement("td");
-      const td2 = document.createElement("td");
-      td1.appendChild(s1); td2.appendChild(s2);
-      tr.appendChild(td1); tr.appendChild(td2);
-      // store the exact key this row controls
-      tr.dataset.state = s;
-      tr.dataset.name  = n;
-      tbody.appendChild(tr);
-    });
-  }
+    tbody.appendChild(tr);
+  });
 }
 
-// ---------- coloring ----------
+function highlight(name, on){
+  const key = aliasKey(name);
+  ["#indiaMapDay1","#indiaMapDay2"].forEach(svgId=>{
+    const idx = nameIndex[svgId]; if (!idx) return;
+    const nodes = idx.get(key); if (!nodes) return;
+    nodes.forEach(n => {
+      n.style.strokeWidth = on ? "2px" : "";
+      n.style.filter = on ? "drop-shadow(0 0 4px rgba(0,0,0,0.4))" : "";
+    });
+  });
+}
+
+// ---- coloring ----
 function updateMapColors(){
+  const rows = Array.from(document.querySelectorAll("#forecast-table-body tr"));
+  const selections = rows.map(tr => {
+    const name = tr.children[2]?.textContent?.trim();
+    const day1 = tr.children[3]?.querySelector("select")?.value || null;
+    const day2 = tr.children[4]?.querySelector("select")?.value || null;
+    return { key: aliasKey(name), day1, day2, raw: name };
+  });
+
   const pal = window.forecastColors || {};
 
-  if (g_hasMapping) {
-    // Build group selections from table rows (IMD labels)
-    const selections = Array.from(document.querySelectorAll("#forecast-table-body tr")).map(tr => {
-      const group = tr.dataset.group; // normalized IMD name
-      const day1 = tr.children[3]?.querySelector("select")?.value || null;
-      const day2 = tr.children[4]?.querySelector("select")?.value || null;
-      return { group, day1, day2 };
+  ["#indiaMapDay1","#indiaMapDay2"].forEach((svgId,idx)=>{
+    const dayKey = idx===0 ? "day1" : "day2";
+    const idxMap = nameIndex[svgId]; if (!idxMap) return;
+    const svg = d3.select(svgId);
+
+    // reset to hatch
+    svg.selectAll(".subdiv").attr("fill","url(#diagonalHatch)");
+    svg.selectAll(".map-icon").remove();
+
+    selections.forEach(rec=>{
+      const nodes = idxMap.get(rec.key);
+      if (!nodes) { console.warn("[No match]", rec.raw); return; }
+      const color = pal[rec[dayKey]] || "#eee";
+      nodes.forEach(n => n.setAttribute("fill", color));
+
+      // place one icon per polygon centroid
+      const c = centroids[svgId][rec.key];
+      const icon = (window.forecastIcons || {})[rec[dayKey]];
+      if (c && icon) {
+        svg.append("text")
+          .attr("class","map-icon")
+          .attr("x", c[0]).attr("y", c[1])
+          .attr("text-anchor","middle")
+          .attr("alignment-baseline","middle")
+          .attr("font-size",18)
+          .text(icon);
+      }
     });
-
-    ["#indiaMapDay1","#indiaMapDay2"].forEach((svgId,idx)=>{
-      const dayKey = idx===0 ? "day1" : "day2";
-      // reset to hatch
-      d3.select(svgId).selectAll(".subdiv").attr("fill","url(#diagonalHatch)");
-
-      // color districts whose mapping falls into each selected group
-      const idxMap = g_index[svgId];
-      const cents = g_centroids[svgId];
-      const svg = d3.select(svgId);
-      svg.selectAll(".map-icon").remove();
-
-      selections.forEach(sel=>{
-        const color = pal[sel[dayKey]] || "#eee";
-        // paint all districts mapped to this group
-        g_map.forEach((subdiv, key) => {
-          if (subdiv !== sel.group) return;
-          const nodes = idxMap.get(key);
-          if (!nodes) return;
-          nodes.forEach(n => n.setAttribute("fill", color));
-          // icon (one per district centroid)
-          const c = cents[key];
-          if (c && window.forecastIcons && window.forecastIcons[sel[dayKey]]) {
-            svg.append("text")
-              .attr("class","map-icon")
-              .attr("x", c[0]).attr("y", c[1])
-              .attr("text-anchor","middle")
-              .attr("alignment-baseline","middle")
-              .attr("font-size",18)
-              .text(window.forecastIcons[sel[dayKey]]);
-          }
-        });
-      });
-    });
-
-  } else {
-    // No CSV mapping: color districts directly from rows
-    const selections = Array.from(document.querySelectorAll("#forecast-table-body tr")).map(tr => {
-      const s = tr.dataset.state || tr.children[1]?.textContent?.trim() || "";
-      const n = tr.dataset.name  || tr.children[2]?.textContent?.trim() || "";
-      const day1 = tr.children[3]?.querySelector("select")?.value || null;
-      const day2 = tr.children[4]?.querySelector("select")?.value || null;
-      return { key: `${norm(s)}||${norm(n)}`, day1, day2 };
-    });
-
-    ["#indiaMapDay1","#indiaMapDay2"].forEach((svgId,idx)=>{
-      const dayKey = idx===0 ? "day1" : "day2";
-      const idxMap = g_index[svgId];
-      const svg = d3.select(svgId);
-      svg.selectAll(".map-icon").remove();
-      d3.select(svgId).selectAll(".subdiv").attr("fill","url(#diagonalHatch)");
-
-      selections.forEach(sel=>{
-        const nodes = idxMap.get(sel.key);
-        if (!nodes) return;
-        const color = pal[sel[dayKey]] || "#eee";
-        nodes.forEach(n => n.setAttribute("fill", color));
-        const c = g_centroids[svgId][sel.key];
-        if (c && window.forecastIcons && window.forecastIcons[sel[dayKey]]) {
-          svg.append("text")
-            .attr("class","map-icon")
-            .attr("x", c[0]).attr("y", c[1])
-            .attr("text-anchor","middle")
-            .attr("alignment-baseline","middle")
-            .attr("font-size",18)
-            .text(window.forecastIcons[sel[dayKey]]);
-        }
-      });
-    });
-  }
+  });
 }
 
-// ---------- init ----------
-window.onload = async () => {
+// ---- init ----
+window.onload = () => {
   if (typeof updateISTDate === "function") updateISTDate();
-  await drawMap("#indiaMapDay1");
-  await drawMap("#indiaMapDay2");
+  drawMap("#indiaMapDay1");
+  drawMap("#indiaMapDay2");
 };
