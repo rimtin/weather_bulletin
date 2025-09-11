@@ -1,13 +1,11 @@
+// === Sub-Division app logic (maps now always visible with fitExtent) ===
 
-// === Sub-Division-only app logic, stacked layout ===
-
-// Global stores (per day map)
-window.subdivCentroids = {};   // { "#indiaMapDay1": { "Subdiv Name": [x,y], ... }, ... }
+// Global stores (per-day map)
+window.subdivCentroids = {}; // { "#indiaMapDay1": { "Subdiv Name": [x,y], ... }, ... }
 
 // Layout
 const W = 860, H = 580;
 const PAD = 18;
-const SCALE_BOOST = 1.10;
 
 // Helpers
 const cssEscape = s =>
@@ -27,14 +25,17 @@ function getProp(obj, keys) {
   return "";
 }
 function getStateName(props) {
-  return getProp(props, ["ST_NM", "st_nm", "STATE", "STATE_UT", "NAME_1", "state_name", "State"]);
+  return getProp(props, ["ST_NM","st_nm","STATE","STATE_UT","NAME_1","state_name","State"]);
 }
 function getSubdivName(props) {
-  // Adjust keys if your file uses a different label
-  return getProp(props, ["SUBDIV", "SUBDIV_NAME", "subdivision", "SUBDIVISION", "NAME_2", "name", "Name"]);
+  // Add/adjust keys to match your file if needed
+  return getProp(
+    props,
+    ["SUBDIV","SUBDIV_NAME","SUBDIVISION","SubDiv","SUBDIV_N","NAME_2","name","Name","Division","DIVISION"]
+  );
 }
 
-// Try a list of possible sub-division files (local → GitHub → CDN)
+// Preferred sub-division file locations (first that loads is used)
 const SUBDIV_GEO_URLS = [
   "indian_met_zones.geojson",
   "assets/indian_met_zones.geojson",
@@ -50,8 +51,11 @@ async function fetchFirst(urls) {
       const resp = await fetch(url, { cache: "no-store" });
       if (!resp.ok) continue;
       const data = await resp.json();
+      console.log("[Map] Loaded:", url);
       return data;
-    } catch(e) { /* try next */ }
+    } catch (e) {
+      console.warn("[Map] Failed:", url, e);
+    }
   }
   throw new Error("Could not load any sub-division GeoJSON URLs");
 }
@@ -61,7 +65,7 @@ async function drawMap(svgId) {
   const svg = d3.select(svgId);
   svg.selectAll("*").remove();
 
-  // Hatch for excluded
+  // Hatch for excluded/no-forecast
   const defs = svg.append("defs");
   defs.append("pattern")
     .attr("id", "diagonalHatch")
@@ -73,34 +77,37 @@ async function drawMap(svgId) {
     .attr("stroke", "#999")
     .attr("stroke-width", 1);
 
-  // Load sub-divisions
+  // Load geometry
   let features = [];
   try {
     const geo = await fetchFirst(SUBDIV_GEO_URLS);
-    features = geo.features || [];
+    if (geo.type === "Topology") {
+      // TopoJSON fallback (choose the first object)
+      const key = Object.keys(geo.objects)[0];
+      features = topojson.feature(geo, geo.objects[key]).features;
+    } else {
+      features = geo.features || [];
+    }
   } catch (err) {
     alert("Could not load sub-division map data.");
     console.error(err);
     return;
   }
+  if (!features.length) {
+    alert("Sub-division file loaded but had 0 features.");
+    return;
+  }
+  console.log(`[Map] Features: ${features.length}`);
 
-  // Projection fit
-  const projection = d3.geoMercator();
+  // --- KEY FIX: use fitExtent to guarantee a correct on-screen projection ---
+  const fc = { type: "FeatureCollection", features };
+  const projection = d3.geoMercator().fitExtent([[PAD, PAD], [W - PAD, H - PAD]], fc);
   const path = d3.geoPath(projection);
-  const bounds = d3.geoBounds({ type: "FeatureCollection", features });
-  const [[minX, minY], [maxX, maxY]] = bounds;
-  const width = maxX - minX, height = maxY - minY;
-  const scale = Math.min((W - PAD*2)/width, (H - PAD*2)/height) * 150 * SCALE_BOOST;
 
-  projection
-    .scale(scale)
-    .center([(minX + maxX)/2, (minY + maxY)/2])
-    .translate([W/2, H/2]);
-
-  // Allowed sub-divisions (from table list)
+  // Allowed sub-divisions come from the table list
   const allowed = new Set((window.subdivisions || []).map(s => normalizeName(s.name)));
 
-  // Draw
+  // Draw shapes
   svg.append("g")
     .attr("class", "subdivs")
     .selectAll("path")
@@ -124,17 +131,11 @@ async function drawMap(svgId) {
     window.subdivCentroids[svgId][n] = path.centroid(f);
   });
 
-  // After second map is drawn, init once
+  // After the second map, initialize the UI (once)
   if (svgId === "#indiaMapDay2") {
-    buildLegendFromPalette();
     initializeForecastTable();
     updateMapColors();
   }
-}
-
-// (Optional) build palette -> can be used later if you add a legend
-function buildLegendFromPalette() {
-  // Intentionally left (no legend in this vertical layout)
 }
 
 // === TABLES (Sub-division controls) ===
@@ -149,7 +150,7 @@ function initializeForecastTable() {
   (window.subdivisions || []).forEach(row => {
     const tr = document.createElement("tr");
 
-    // Day dropdowns
+    // Day selectors
     const sel1 = document.createElement("select");
     const sel2 = document.createElement("select");
     [sel1, sel2].forEach(sel => {
@@ -186,7 +187,7 @@ function highlightSubdiv(subdivName, on) {
   ["#indiaMapDay1", "#indiaMapDay2"].forEach(svgId => {
     const node = document.querySelector(`${svgId} .subdiv[data-subdiv="${safe}"]`);
     if (!node) return;
-    node.style.strokeWidth = on ? "2.0px" : "";
+    node.style.strokeWidth = on ? "2px" : "";
     node.style.filter = on ? "drop-shadow(0 0 4px rgba(0,0,0,0.4))" : "";
   });
 }
@@ -196,7 +197,7 @@ function updateMapColors() {
   const rows = Array.from(document.querySelectorAll("#forecast-table-body tr"));
   const bySubdiv = {};
   rows.forEach(tr => {
-    const subdiv = tr.children[2]?.textContent?.trim();      // 0:SNo 1:State 2:SubDiv 3:Day1 4:Day2
+    const subdiv = tr.children[2]?.textContent?.trim(); // 0:SNo 1:State 2:SubDiv 3:Day1 4:Day2
     const day1 = tr.children[3]?.querySelector("select")?.value || null;
     const day2 = tr.children[4]?.querySelector("select")?.value || null;
     if (!subdiv) return;
