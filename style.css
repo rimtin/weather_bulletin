@@ -1,152 +1,64 @@
-/* Reset & Layout */
+/* === Reset & Layout === */
 * { box-sizing: border-box; margin: 0; padding: 0; }
 body { font-family: Arial, sans-serif; background: #f2f2f2; display: flex; justify-content: center; }
-.container { background: #fff; padding: 20px; max-width: 794px; width: 100%; margin: 20px auto; box-shadow: 0 0 12px rgba(0,0,0,0.1); overflow-x: auto; }
-
-/* Colors (match data.js) */
-:root{
-  --clr-clear:#A7D8EB;
-  --clr-low:#C4E17F;
-  --clr-medium:#FFF952;
-  --clr-high:#E69536;
-  --clr-overcast:#FF4D4D;
-}
-
-/* Pages */
-.page { padding: 20px 0; page-break-after: always; break-inside: avoid; }
-.page:last-child { page-break-after: auto; }
+.container { background: #fff; padding: 20px; max-width: 794px; width: 100%; margin: 24px auto; box-shadow: 0 0 12px rgba(0,0,0,0.1); overflow-x: auto; }
 
 /* Headings */
 .center-title { font-size: 24px; text-align: center; margin-bottom: 6px; }
 .center-date  { font-size: 14px; text-align: center; margin-bottom: 10px; }
+h3 { font-size: 16px; margin: 12px 0 8px; }
 
-/* Notes */
-.bulletin-text {
-  border: 1px solid #ccc; padding: 10px; margin: 20px auto; border-radius: 6px;
-  max-width: 600px; text-align: justify; font-size: 13px; line-height: 1.6;
-  white-space: pre-wrap; overflow-wrap: break-word; break-inside: avoid;
-  min-height: 100px; max-height: 400px; overflow-y: auto;
-}
+/* Notes block */
+.bulletin-text { border: 1px solid #ddd; padding: 10px; min-height: 120px; background: #fafafa; line-height: 1.4; border-radius: 8px; }
 
 /* Tables */
-.cloud-info-table, .forecast-table { width: 100%; border-collapse: collapse; margin: 20px 0; font-size: 13px; }
-.cloud-info-table th, .cloud-info-table td,
-.forecast-table th, .forecast-table td { border: 1.4px solid #222; padding: 6px; text-align: center; vertical-align: middle; }
-.cloud-info-table th, .forecast-table th { background-color: #cce6ff; font-weight: bold; }
-.forecast-table tbody tr:nth-child(even) { background: #f9f9f9; }
-.cloud-cover-reference .cloud-info-table tbody tr:nth-child(even) { background: transparent; }
-.table-title { text-align: center; font-size: 18px; font-weight: bold; margin: 20px 0 10px; }
+table { width: 100%; border-collapse: collapse; margin: 10px 0 14px; }
+th, td { border: 1px solid #ddd; padding: 8px 10px; font-size: 13px; }
+th { background: #f7f7f7; text-align: center; }
+tbody tr:nth-child(even) { background: #fafafa; }
+tbody tr:hover { background: #f0f7ff; }
 
-/* Dropdowns */
-select { width: 100%; padding: 4px; font-size: 12px; }
-.forecast-table tbody tr:hover { background: #e9f2ff !important; }
-.forecast-table td select:hover { outline: 2px solid #99c2ff; cursor: pointer; }
+.cloud-info-table td:nth-child(1), .cloud-info-table th:nth-child(1),
+.subdivision-table td:nth-child(1), .subdivision-table th:nth-child(1),
+.subdivision-table td:nth-child(3), .subdivision-table th:nth-child(3) { text-align: center; }
 
-/* Map */
-.map-label { text-align: center; font-weight: bold; font-size: 14px; margin: 10px 0; }
-.map-wrapper { margin: 10px auto; max-width: 720px; position: relative; break-inside: avoid; }
+/* Swatches to match Excel-like palette */
+.swatch-clear    { background:#A7D8EB !important; color:#003244; font-weight:700; }
+.swatch-low      { background:#C4E17F !important; color:#203200; font-weight:700; }
+.swatch-medium   { background:#FFF952 !important; color:#3a3000; font-weight:700; }
+.swatch-high     { background:#E69536 !important; color:#3A1E00; font-weight:700; }
+.swatch-overcast { background:#FF4D4D !important; color:#4A0000; font-weight:700; }
 
-/* Responsive, non-collapsing SVGs */
-.map-wrapper svg{
-  display:block;
-  width:100%;
-  height:auto;
-  aspect-ratio: 860 / 580;  /* must match JS viewBox */
-  min-height:580px;
-  border:1px solid #ccc;
-  background:#fff;
-  position:relative;
-  z-index:2;
-}
-
-/* Legend */
-.map-legend {
-  position: absolute; top: 12px; right: 12px;
-  background: #fff; border: 1px solid #ccc; padding: 8px 12px;
-  font-size: 12px; border-radius: 6px; box-shadow: 0 0 4px rgba(0,0,0,0.1);
-  width: fit-content; z-index: 10;
-  pointer-events: none;      /* don't block map hover */
-}
-.map-legend ul { list-style: none; padding: 0; margin: 0; }
-.map-legend li { margin-bottom: 6px; display: flex; align-items: center; }
-.legend-swatch { width: 18px; height: 18px; border: 1.4px solid #222; margin-right: 6px; display: inline-block; border-radius: 3px; }
-.map-legend .legend-pattern { width:18px; height:18px; margin-right:6px; border:1.4px solid #222; border-radius:3px; background-image: repeating-linear-gradient(45deg, #999 0, #999 1px, transparent 1px, transparent 4px); }
-
-/* Legend swatches */
-.swatch-clear    { background: var(--clr-clear)   !important; color:#063647; font-weight:600; }
-.swatch-low      { background: var(--clr-low)     !important; color:#2C4400; font-weight:600; }
-.swatch-medium   { background: var(--clr-medium)  !important; color:#4A3D00; font-weight:700; }
-.swatch-high     { background: var(--clr-high)    !important; color:#3A1E00; font-weight:700; }
-.swatch-overcast { background: var(--clr-overcast)!important; color:#4A0000; font-weight:700; }
-
-/* Subdivision table tweaks */
-.subdivision-table td, .subdivision-table th { text-align: left; }
-.subdivision-table td:nth-child(1), .subdivision-table th:nth-child(1) { text-align: center; width: 52px; }
-.subdivision-table td:nth-child(2), .subdivision-table th:nth-child(2) { width: 160px; }
-.subdivision-table td:nth-child(5), .subdivision-table th:nth-child(5) { width: 140px; }
-
-/* Note row */
+/* Note row under classification */
 .note-row { text-align: left; padding: 8px 10px; font-size: 12px; background: #fff9e6; color: #5a4100; font-weight: 600; }
 
-/* Map base styling (JS overrides fill) */
-#indiaSubMapDay1 path.state,
-#indiaSubMapDay2 path.state {
-  fill: #e6e6e6;
-  stroke: none;
-}
-#indiaSubMapDay1 .borders .border,
-#indiaSubMapDay2 .borders .border {
-  fill: none;
-  stroke: #666;
-  stroke-width: 0.8px;
-  vector-effect: non-scaling-stroke;
-}
+/* Forecast table selects */
+.forecast-table select { width: 100%; padding: 6px; border-radius: 6px; border: 1px solid #ccc; background: #fff; font-size: 13px; }
+.forecast-table select:hover { outline: 2px solid #74b8ff; outline-offset: 1px; }
 
-/* Download button */
-button { display: block; margin: 30px auto 10px; padding: 10px 20px; font-size: 14px; background: #007bff; border: none; color: #fff; border-radius: 6px; cursor: pointer; }
-button:hover { background: #0056b3; }
+/* Maps row layout */
+.maps-row { display: grid; grid-template-columns: 1fr 1fr 200px; gap: 12px; align-items: start; }
+.map-card { border: 1px solid #ddd; border-radius: 8px; overflow: hidden; background: #fff; }
+.map-card-header { background: #f7f7f7; border-bottom: 1px solid #ddd; padding: 8px 10px; }
+svg { width: 100%; height: 520px; display: block; }
 
-/* Ensure polygons with wrong winding don't invert the fill */
-#indiaSubMapDay1 path.state,
-#indiaSubMapDay2 path.state {
-  fill-rule: evenodd;
-}
+/* Legend */
+.map-legend { border: 1px solid #ddd; border-radius: 8px; padding: 10px; background: #fff; position: sticky; top: 8px; }
+.map-legend h4 { margin-bottom: 6px; }
+.map-legend ul { list-style: none; margin-bottom: 8px; }
+.map-legend li { display: flex; align-items: center; gap: 8px; font-size: 13px; margin: 6px 0; }
+.legend-swatch { width: 16px; height: 16px; border: 1px solid #999; border-radius: 4px; display: inline-block; }
+.legend-line { height: 1px; background: #e6e6e6; margin: 6px 0; }
+.legend-pattern { width: 16px; height: 16px; border: 1px solid #999; background-image: repeating-linear-gradient(45deg, #999 0, #999 1px, transparent 1px, transparent 6px); border-radius: 4px; display: inline-block; }
 
-/* --- MAPS (clean + non-collapsing) --- */
-.map-wrapper {
-  margin: 10px auto;
-  max-width: 720px;
-  position: relative;
-  break-inside: avoid;
-}
+/* SVG state styling */
+.state { stroke: #999; stroke-width: 0.75; cursor: pointer; transition: filter 0.15s ease, stroke-width 0.15s ease; }
+.state:hover { filter: drop-shadow(0 0 4px rgba(0,0,0,0.3)); stroke-width: 1.35; }
 
-/* one source of truth for the SVG size */
-.map-wrapper svg {
-  display: block;
-  width: 100%;
-  max-width: 720px;
-  min-width: 640px;         /* prevents “5px width” scenarios */
-  height: 580px;            /* fixed height = reliable layout */
-  background: #fff;
-  border: 1px solid #ccc;
-}
+/* Icon labels */
+.map-icon { pointer-events: none; font-size: 16px; }
 
-/* legend never blocks hover */
-.map-legend { pointer-events: none; }
-
-/* fills + borders (JS paints fills; borders stay crisp) */
-#indiaSubMapDay1 .fills .state,
-#indiaSubMapDay2 .fills .state {
-  fill: #e6e6e6;            /* default; JS overrides on selection */
-  fill-rule: evenodd;       /* avoids inverted/“donut” polygons */
-  stroke: none;             /* borders are drawn separately */
-}
-
-#indiaSubMapDay1 .borders .border,
-#indiaSubMapDay2 .borders .border {
-  fill: none;
-  stroke: #666;
-  stroke-width: 0.8px;
-  vector-effect: non-scaling-stroke;
-  pointer-events: none;     /* keeps hover on the fills */
-}
+/* Actions */
+.actions { display: flex; justify-content: flex-end; margin-top: 12px; }
+button { background: #2563eb; color: #fff; border: none; border-radius: 8px; padding: 10px 14px; font-weight: 700; cursor: pointer; }
+button:hover { background: #1d4ed8; }
