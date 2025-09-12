@@ -1,19 +1,17 @@
-// === Sub-division coloring by ST_NM (exact 20) with centered icons + per-map legends ===
+// === Sub-division coloring by ST_NM (exact 20) with aligned icons + per-map legends ===
 
 const W = 860, H = 580, PAD = 18;
-
-// We color by this GeoJSON field (your 20 labels live here)
-const MATCH_KEY = "ST_NM";
+const MATCH_KEY = "ST_NM"; // your 20 labels live here
 let STATE_KEY = "ST_NM";
 let NAME_KEY  = "name";
 
 // Per-map stores
-const indexByGroup = { "#indiaMapDay1": new Map(), "#indiaMapDay2": new Map() }; // norm(ST_NM) -> [paths]
-const groupCentroid = { "#indiaMapDay1": {}, "#indiaMapDay2": {} };               // norm(ST_NM) -> [x,y]
+const indexByGroup  = { "#indiaMapDay1": new Map(), "#indiaMapDay2": new Map() }; // norm(ST_NM) -> [paths]
+const groupCentroid = { "#indiaMapDay1": {}, "#indiaMapDay2": {} };                // norm(ST_NM) -> [x,y]
 
-// Optional per-group nudge if you want to tweak any icon position later.
+// (optional) small nudges per group if any icon needs a tiny tweak
 const ICON_OFFSETS = {
-  // example: "tamil nadu and puducherry": { dx: 6, dy: -8 }
+  // "tamil nadu and puducherry": { dx: 6, dy: -8 }
 };
 
 // ---------- helpers ----------
@@ -45,6 +43,12 @@ function pickProjection(fc){
     : d3.geoIdentity().reflectY(true).fitExtent([[PAD,PAD],[W-PAD,H-PAD]], fc);
 }
 
+function ensureLayer(svg, className){
+  let g = svg.select(`.${className}`);
+  if (g.empty()) g = svg.append("g").attr("class", className);
+  return g;
+}
+
 const GEO_URLS = [
   "indian_met_zones.geojson",
   "assets/indian_met_zones.geojson",
@@ -68,32 +72,32 @@ async function fetchFirst(urls){
 }
 
 // ---------- legends ----------
-function drawLegend(svg, title = "Index"){
+function drawLegend(svg, title){
   svg.selectAll(".map-legend").remove();
+
   const pal = window.forecastColors || {};
   const labels = window.forecastOptions || Object.keys(pal);
-  const itemH = 18, pad = 8, sw = 18;
-  const width = 180;
-  const height = pad + labels.length * itemH + 18;
+  const pad = 10, sw = 18, gap = 18;
+  const width = 200;
+  const height = pad + 18 + labels.length * gap + pad;
 
   const g = svg.append("g")
     .attr("class", "map-legend")
-    .attr("transform", `translate(${W - width - 10}, ${H - height - 10})`);
+    .attr("transform", `translate(${W - width - 12}, ${H - height - 12})`);
 
   g.append("rect")
-    .attr("x", 0).attr("y", 0)
     .attr("width", width).attr("height", height)
-    .attr("rx", 8).attr("ry", 8)
-    .attr("fill", "rgba(255,255,255,0.9)")
-    .attr("stroke", "#ccc");
+    .attr("rx", 10).attr("ry", 10)
+    .attr("fill", "rgba(255,255,255,0.92)")
+    .attr("stroke", "#cfcfcf");
 
   g.append("text")
-    .attr("x", pad).attr("y", pad + 12)
-    .attr("font-weight", 700).attr("font-size", 12)
+    .attr("x", pad).attr("y", pad + 14)
+    .attr("font-weight", 700).attr("font-size", 13)
     .text(title);
 
   labels.forEach((label, i) => {
-    const y = pad + 20 + i * itemH;
+    const y = pad + 28 + i * gap;
     g.append("rect")
       .attr("x", pad).attr("y", y - 12).attr("width", sw).attr("height", 12)
       .attr("fill", pal[label] || "#eee").attr("stroke", "#999");
@@ -109,15 +113,15 @@ async function drawMap(svgId){
   const svg = d3.select(svgId);
   svg.selectAll("*").remove();
 
-  // layers
+  // layers (order: fills -> icons -> legend)
   const defs = svg.append("defs");
   defs.append("pattern")
     .attr("id","diagonalHatch").attr("patternUnits","userSpaceOnUse")
     .attr("width",6).attr("height",6)
     .append("path").attr("d","M0,0 l6,6").attr("stroke","#999").attr("stroke-width",1);
 
-  const fillLayer  = svg.append("g").attr("class", "fill-layer");
-  const iconLayer  = svg.append("g").attr("class", "icon-layer").style("pointer-events","none"); // on top
+  const fillLayer = ensureLayer(svg, "fill-layer");
+  const iconLayer = ensureLayer(svg, "icon-layer").style("pointer-events","none");
 
   // load features
   let features = [];
@@ -139,17 +143,17 @@ async function drawMap(svgId){
   const projection = pickProjection(fc);
   const path = d3.geoPath(projection);
 
-  // draw districts
+  // draw
   const paths = fillLayer.selectAll("path").data(features).join("path")
     .attr("class","subdiv")
     .attr("data-st", d => d.properties?.[STATE_KEY] ?? "")
-    .attr("data-name", d => d.properties?.[NAME_KEY]  ?? "")
+    .attr("data-d",  d => d.properties?.[NAME_KEY]  ?? "")
     .attr("d", path)
     .attr("fill", "url(#diagonalHatch)")
     .attr("stroke", "#666").attr("stroke-width", 0.7)
     .on("mouseover", function(){ d3.select(this).raise(); });
 
-  // index by ST_NM group & compute one centroid per group
+  // build group index & one centroid per ST_NM
   const idx = new Map();
   const groups = new Map();
   paths.each(function(d){
@@ -163,17 +167,17 @@ async function drawMap(svgId){
   groupCentroid[svgId] = {};
   groups.forEach((arr, key) => {
     const groupFC = { type: "FeatureCollection", features: arr };
+    // true geographic centroid → project to screen coords
     const lonLat = d3.geoCentroid(groupFC);
     let [x, y] = projection(lonLat);
     const off = ICON_OFFSETS[key];
     if (off) { x += off.dx || 0; y += off.dy || 0; }
-    groupCentroid[svgId][key] = [x,y];
+    groupCentroid[svgId][key] = [x, y];
   });
 
-  // legend (index)
-  drawLegend(svg, svgId === "#indiaMapDay1" ? "Index – Day 1" : "Index – Day 2");
+  // legend
+  drawLegend(svg, svgId === "#indiaMapDay1" ? "Index — Day 1" : "Index — Day 2");
 
-  // after second map, build fixed table + color
   if (svgId === "#indiaMapDay2"){
     buildFixedTable();
     document.querySelectorAll("#forecast-table-body select").forEach(sel => {
@@ -183,7 +187,7 @@ async function drawMap(svgId){
   }
 }
 
-// ---------- table: fixed 20 ----------
+// ---------- table: fixed 20 (from data.js) ----------
 function buildFixedTable(){
   const tbody = document.getElementById("forecast-table-body");
   if (!tbody) return;
@@ -235,13 +239,13 @@ function highlight(label, on){
   });
 }
 
-// ---------- coloring + icons ----------
+// ---------- coloring + icons (always create/clear icon-layer safely) ----------
 function updateMapColors(){
   const pal = window.forecastColors || {};
   const icons = window.forecastIcons || {};
 
   const rows = Array.from(document.querySelectorAll("#forecast-table-body tr")).map(tr => {
-    const label = tr.children[2]?.textContent?.trim();   // equals ST_NM
+    const label = tr.children[2]?.textContent?.trim();   // this equals ST_NM
     const day1  = tr.children[3]?.querySelector("select")?.value || null;
     const day2  = tr.children[4]?.querySelector("select")?.value || null;
     return { key: norm(label), day1, day2, raw: label };
@@ -252,9 +256,12 @@ function updateMapColors(){
     const svg = d3.select(svgId);
     const idxMap = indexByGroup[svgId] || new Map();
 
-    // reset
+    // reset fills
     svg.selectAll(".subdiv").attr("fill","url(#diagonalHatch)");
-    svg.selectAll(".icon-layer").selectAll("*").remove();
+
+    // ensure + clear icon layer
+    const gIcons = ensureLayer(svg, "icon-layer").style("pointer-events","none");
+    gIcons.selectAll("*").remove();
 
     rows.forEach(rec => {
       const nodes = idxMap.get(rec.key);
@@ -262,25 +269,24 @@ function updateMapColors(){
       const color = pal[rec[dayKey]] || "#eee";
       nodes.forEach(n => n.setAttribute("fill", color));
 
-      // icon at ST_NM centroid (with small visible dot + emoji text)
       const pos = groupCentroid[svgId][rec.key];
       if (!pos) return;
       const [x,y] = pos;
-      const g = svg.select(".icon-layer");
 
-      // visible dot (guaranteed visibility)
-      g.append("circle").attr("cx", x).attr("cy", y).attr("r", 5.5)
-        .attr("class","icon-dot")
+      // dot (always visible)
+      gIcons.append("circle")
+        .attr("cx", x).attr("cy", y).attr("r", 5.5)
         .attr("fill", "#f5a623").attr("stroke","#fff").attr("stroke-width",1.3);
 
-      // emoji (if platform supports it)
+      // emoji (on top of dot)
       const emoji = icons[rec[dayKey]];
       if (emoji) {
-        g.append("text")
+        gIcons.append("text")
           .attr("x", x).attr("y", y)
           .attr("text-anchor", "middle")
-          .attr("dominant-baseline", "central")   // better cross-browser centering
+          .attr("dominant-baseline", "central")
           .attr("font-size", 18)
+          .attr("font-family", `"Segoe UI Emoji","Apple Color Emoji","Noto Color Emoji",sans-serif`)
           .attr("paint-order", "stroke")
           .attr("stroke", "white").attr("stroke-width", 2)
           .text(emoji);
