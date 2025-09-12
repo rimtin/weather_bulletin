@@ -7,7 +7,7 @@ window.subdivisions = [
   { state: "Gujarat",            name: "Gujarat region" },
   { state: "Uttar Pradesh",      name: "West Uttar Pradesh" },
   { state: "Uttar Pradesh",      name: "East Uttar Pradesh" },
-  { state: "Bihar",              name: "Bihar" },
+  //{ state: "Bihar",              name: "Bihar" },
   { state: "Madhya Pradesh",     name: "West Madhya Pradesh" },
   { state: "Madhya Pradesh",     name: "East Madhya Pradesh" },
   { state: "Chhattisgarh",       name: "Chhattisgarh" },
