@@ -1,110 +1,92 @@
-
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8" />
+  <meta charset="utf-8" />
+  <title>Cloud Coverage Forecast Bulletin</title>
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Cloud Coverage Forecast – Sub-Division Control</title>
-
   <link rel="stylesheet" href="style.css" />
-
   <!-- D3 + TopoJSON -->
-  <script src="https://d3js.org/d3.v7.min.js"></script>
-  <script src="https://unpkg.com/topojson-client@3"></script>
-
-  <!-- html2pdf (bundled html2canvas + jsPDF) -->
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
-
-  <!-- App data + logic -->
-  <script defer src="data.js"></script>
-  <script defer src="app.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/d3@7/dist/d3.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/topojson-client@3/dist/topojson-client.min.js"></script>
 </head>
 <body>
-  <div id="print-root" class="container">
-    <h1 class="center-title">Cloud Coverage Forecast Bulletin</h1>
-    <h2 id="forecast-date" class="center-date"></h2>
+  <div class="container">
 
-    <!-- 1) Cloud description table -->
-    <h3>Cloud Cover Classification</h3>
-    <table class="cloud-info-table">
-      <thead>
-        <tr>
-          <th>S. No.</th>
-          <th>Sky Covered by Clouds</th>
-          <th>Cloud Cover</th>
-          <th>Cloud Type</th>
-        </tr>
-      </thead>
-      <tbody>
-        <tr class="swatch-clear"><td>1</td><td>0–10%</td><td>Clear Sky</td><td>No Cloud</td></tr>
-        <tr class="swatch-low"><td>2</td><td>10–30%</td><td>Low Cloud Cover</td><td>Few Clouds</td></tr>
-        <tr class="swatch-medium"><td>3</td><td>30–50%</td><td>Medium Cloud Cover</td><td>Scattered Clouds / Partly Cloudy</td></tr>
-        <tr class="swatch-high"><td>4</td><td>50–75%</td><td>High Cloud Cover</td><td>Broken Clouds / Mostly Cloudy</td></tr>
-        <tr class="swatch-overcast"><td>5</td><td>75–100%</td><td>Overcast Cloud Cover</td><td>Cloudy / Overcast</td></tr>
-      </tbody>
-      <tfoot>
-        <tr>
-          <td colspan="4" class="note-row">Note: This terminology is for local use only.</td>
-        </tr>
-      </tfoot>
-    </table>
+    <!-- Page 1 -->
+    <section id="page1" class="print-page">
+      <header class="header">
+        <div>
+          <h1>Cloud Coverage Forecast Bulletin</h1>
+          <div class="subhead">Forecast Date: <span id="forecast-date">—</span></div>
+        </div>
+        <div class="actions">
+          <button class="btn screen-only" onclick="window.print()">Download PDF</button>
+        </div>
+      </header>
 
-    <!-- 2) Table: State, Sub-Division, Day1, Day2 -->
-    <h3 style="margin-top:16px;">Sub-Division Forecast (Controls)</h3>
-    <table class="forecast-table subdivision-table">
-      <thead>
-        <tr>
-          <th>S. No.</th>
-          <th>State</th>
-          <th>Sub-Division</th>
-          <th>Day 1</th>
-          <th>Day 2</th>
-        </tr>
-      </thead>
-      <tbody id="forecast-table-body"></tbody>
-    </table>
+      <!-- Cloud description / palette -->
+      <div class="card">
+        <h3>Cloud Cover Classification</h3>
+        <table class="legend-table" id="paletteTable">
+          <thead>
+            <tr>
+              <th>Label</th>
+              <th>Coverage</th>
+            </tr>
+          </thead>
+          <tbody>
+            <!-- JS fills rows from window.forecastColors -->
+          </tbody>
+        </table>
+        <p class="small-note">Colors/labels above drive both the table and the maps.</p>
+      </div>
 
-    <!-- 3) Map 1 -->
-    <h3>Map 1 – Projection of Division Weather Forecast (Day 1)</h3>
-    <div class="map-block">
-      <svg id="indiaMapDay1" viewBox="0 0 860 580" role="img" aria-label="India day 1 forecast map"></svg>
-    </div>
+      <!-- Data table -->
+      <div class="card">
+        <h3>Sub-Division Forecast (Day 1 & Day 2)</h3>
+        <div class="table-wrap">
+          <table class="data-table">
+            <thead>
+              <tr>
+                <th style="width:48px">S. No.</th>
+                <th style="width:180px">State</th>
+                <th>Sub Division</th>
+                <th style="width:180px">Day 1</th>
+                <th style="width:180px">Day 2</th>
+              </tr>
+            </thead>
+            <tbody id="forecast-table-body">
+              <!-- JS builds 20 rows with merged State cells -->
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </section>
 
-    <!-- 4) Map 2 -->
-    <h3>Map 2 – Projection of Division Weather Forecast (Day 2)</h3>
-    <div class="map-block">
-      <svg id="indiaMapDay2" viewBox="0 0 860 580" role="img" aria-label="India day 2 forecast map"></svg>
-    </div>
+    <!-- Page 2 -->
+    <section id="page2" class="print-page">
+      <div class="map-card page-break-avoid">
+        <h4>Map 1 – Projection of Division Weather Forecast (Day 1)</h4>
+        <svg id="indiaMapDay1" viewBox="0 0 860 580" width="100%" height="420" role="img" aria-label="India map day 1"></svg>
+      </div>
 
-    <!-- 5) Dialog box (notes) -->
-    <h3 style="text-align:left; margin-top:16px;">Dialog / Notes</h3>
-    <div id="bulletinInputEnd" class="bulletin-text" contenteditable="true">
-      Add your notes here...
-    </div>
+      <div class="map-card page-break-avoid">
+        <h4>Map 2 – Projection of Division Weather Forecast (Day 2)</h4>
+        <svg id="indiaMapDay2" viewBox="0 0 860 580" width="100%" height="420" role="img" aria-label="India map day 2"></svg>
+      </div>
+    </section>
 
-    <!-- Actions -->
-    <div class="actions">
-      <button id="downloadBtn" type="button">Download as PDF</button>
-    </div>
+    <!-- Page 3 -->
+    <section id="page3" class="print-page">
+      <div class="card">
+        <h3>Dialog / Notes</h3>
+        <textarea id="notes" placeholder="Add your notes here..." class="notes-box"></textarea>
+      </div>
+    </section>
   </div>
 
-  <script>
-    // PDF export
-    document.addEventListener("DOMContentLoaded", () => {
-      const btn = document.getElementById("downloadBtn");
-      btn?.addEventListener("click", () => {
-        const el = document.getElementById("print-root");
-        if (!el) return alert("Printable container not found.");
-        const opts = {
-          margin: 0.25, filename: "Cloud_Forecast_Bulletin.pdf",
-          image: { type: "jpeg", quality: 0.98 },
-          html2canvas: { scale: 2, useCORS: true, allowTaint: true, logging: false },
-          jsPDF: { unit: "in", format: "a4", orientation: "portrait" },
-          pagebreak: { mode: ["avoid-all", "css", "legacy"] }
-        };
-        html2pdf().set(opts).from(el).save();
-      });
-    });
-  </script>
+  <!-- App data + logic -->
+  <script src="data.js"></script>
+  <script src="app.js"></script>
 </body>
 </html>
