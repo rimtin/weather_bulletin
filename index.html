@@ -5,6 +5,7 @@
   <title>Cloud Coverage Forecast Bulletin</title>
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <link rel="stylesheet" href="style.css" />
+  <!-- D3 + TopoJSON -->
   <script src="https://cdn.jsdelivr.net/npm/d3@7/dist/d3.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/topojson-client@3/dist/topojson-client.min.js"></script>
 </head>
@@ -23,7 +24,7 @@
         </div>
       </header>
 
-      <!-- NEW colored cloud table -->
+      <!-- COLORED cloud table -->
       <div class="card">
         <h3>Cloud Cover Classification</h3>
         <table class="cloud-table" id="cloudTable">
@@ -35,7 +36,7 @@
               <th>Cloud Type</th>
             </tr>
           </thead>
-          <tbody><!-- filled by JS --></tbody>
+          <tbody></tbody>
         </table>
         <p class="cloud-note"><strong>Note:</strong> <em>This terminology is for local use only.</em></p>
       </div>
@@ -81,6 +82,7 @@
     </section>
   </div>
 
+  <!-- Load data first, then app -->
   <script src="data.js"></script>
   <script src="app.js"></script>
 </body>
