@@ -1,15 +1,20 @@
-// === Sub-division coloring keyed by ST_NM (exact 20 items) with centered icons ===
+// === Sub-division coloring by ST_NM (exact 20) with centered icons + per-map legends ===
 
 const W = 860, H = 580, PAD = 18;
 
-// The field we match against in your GeoJSON:
-const MATCH_KEY = "ST_NM";      // your 20 labels live here
+// We color by this GeoJSON field (your 20 labels live here)
+const MATCH_KEY = "ST_NM";
 let STATE_KEY = "ST_NM";
 let NAME_KEY  = "name";
 
-// Per-map stores: normalized ST_NM -> nodes / centroid
-const indexByName = { "#indiaMapDay1": new Map(), "#indiaMapDay2": new Map() };
-const centroids   = { "#indiaMapDay1": {},         "#indiaMapDay2": {} };
+// Per-map stores
+const indexByGroup = { "#indiaMapDay1": new Map(), "#indiaMapDay2": new Map() }; // norm(ST_NM) -> [paths]
+const groupCentroid = { "#indiaMapDay1": {}, "#indiaMapDay2": {} };               // norm(ST_NM) -> [x,y]
+
+// Optional per-group nudge if you want to tweak any icon position later.
+const ICON_OFFSETS = {
+  // example: "tamil nadu and puducherry": { dx: 6, dy: -8 }
+};
 
 // ---------- helpers ----------
 const norm = s => String(s || "")
@@ -62,17 +67,57 @@ async function fetchFirst(urls){
   throw new Error("No GeoJSON found");
 }
 
+// ---------- legends ----------
+function drawLegend(svg, title = "Index"){
+  svg.selectAll(".map-legend").remove();
+  const pal = window.forecastColors || {};
+  const labels = window.forecastOptions || Object.keys(pal);
+  const itemH = 18, pad = 8, sw = 18;
+  const width = 180;
+  const height = pad + labels.length * itemH + 18;
+
+  const g = svg.append("g")
+    .attr("class", "map-legend")
+    .attr("transform", `translate(${W - width - 10}, ${H - height - 10})`);
+
+  g.append("rect")
+    .attr("x", 0).attr("y", 0)
+    .attr("width", width).attr("height", height)
+    .attr("rx", 8).attr("ry", 8)
+    .attr("fill", "rgba(255,255,255,0.9)")
+    .attr("stroke", "#ccc");
+
+  g.append("text")
+    .attr("x", pad).attr("y", pad + 12)
+    .attr("font-weight", 700).attr("font-size", 12)
+    .text(title);
+
+  labels.forEach((label, i) => {
+    const y = pad + 20 + i * itemH;
+    g.append("rect")
+      .attr("x", pad).attr("y", y - 12).attr("width", sw).attr("height", 12)
+      .attr("fill", pal[label] || "#eee").attr("stroke", "#999");
+    g.append("text")
+      .attr("x", pad + sw + 8).attr("y", y - 2)
+      .attr("font-size", 12)
+      .text(label);
+  });
+}
+
 // ---------- draw one map ----------
 async function drawMap(svgId){
   const svg = d3.select(svgId);
   svg.selectAll("*").remove();
 
-  // hatch for excluded
+  // layers
   const defs = svg.append("defs");
   defs.append("pattern")
     .attr("id","diagonalHatch").attr("patternUnits","userSpaceOnUse")
     .attr("width",6).attr("height",6)
     .append("path").attr("d","M0,0 l6,6").attr("stroke","#999").attr("stroke-width",1);
+
+  const fillLayer  = svg.append("g").attr("class", "fill-layer");
+  const iconLayer  = svg.append("g").attr("class", "icon-layer").style("pointer-events","none"); // on top
 
   // load features
   let features = [];
@@ -94,44 +139,43 @@ async function drawMap(svgId){
   const projection = pickProjection(fc);
   const path = d3.geoPath(projection);
 
-  // draw districts (they all belong to some ST_NM "sub-division")
-  const g = svg.append("g").attr("class","subdivs");
-  const paths = g.selectAll("path").data(features).join("path")
+  // draw districts
+  const paths = fillLayer.selectAll("path").data(features).join("path")
     .attr("class","subdiv")
     .attr("data-st", d => d.properties?.[STATE_KEY] ?? "")
     .attr("data-name", d => d.properties?.[NAME_KEY]  ?? "")
     .attr("d", path)
     .attr("fill", "url(#diagonalHatch)")
+    .attr("stroke", "#666").attr("stroke-width", 0.7)
     .on("mouseover", function(){ d3.select(this).raise(); });
 
-  // index polygons by normalized ST_NM
+  // index by ST_NM group & compute one centroid per group
   const idx = new Map();
+  const groups = new Map();
   paths.each(function(d){
     const key = norm(String(d.properties?.[MATCH_KEY] ?? ""));
     if (!key) return;
     (idx.get(key) || idx.set(key, []).get(key)).push(this);
+    (groups.get(key) || groups.set(key, []).get(key)).push(d);
   });
-  indexByName[svgId] = idx;
+  indexByGroup[svgId] = idx;
 
-  // === NEW: compute ONE centroid per ST_NM group (not per district) ===
-  // group features by ST_NM, then take spherical centroid and project it
-  const groups = new Map();
-  features.forEach(f => {
-    const key = norm(String(f.properties?.[MATCH_KEY] ?? ""));
-    if (!key) return;
-    (groups.get(key) || groups.set(key, []).get(key)).push(f);
-  });
-
-  centroids[svgId] = {};
+  groupCentroid[svgId] = {};
   groups.forEach((arr, key) => {
     const groupFC = { type: "FeatureCollection", features: arr };
-    const lonLat  = d3.geoCentroid(groupFC);   // centroid on the sphere
-    const xy      = projection(lonLat);        // project to SVG space
-    centroids[svgId][key] = xy;
+    const lonLat = d3.geoCentroid(groupFC);
+    let [x, y] = projection(lonLat);
+    const off = ICON_OFFSETS[key];
+    if (off) { x += off.dx || 0; y += off.dy || 0; }
+    groupCentroid[svgId][key] = [x,y];
   });
 
+  // legend (index)
+  drawLegend(svg, svgId === "#indiaMapDay1" ? "Index – Day 1" : "Index – Day 2");
+
+  // after second map, build fixed table + color
   if (svgId === "#indiaMapDay2"){
-    buildFixedTable();                 // 20 rows from data.js (matches ST_NM)
+    buildFixedTable();
     document.querySelectorAll("#forecast-table-body select").forEach(sel => {
       if (sel.options.length && sel.selectedIndex < 0) sel.selectedIndex = 0;
     });
@@ -182,7 +226,7 @@ function buildFixedTable(){
 function highlight(label, on){
   const key = norm(label);
   ["#indiaMapDay1","#indiaMapDay2"].forEach(svgId=>{
-    const nodes = indexByName[svgId]?.get(key);
+    const nodes = indexByGroup[svgId]?.get(key);
     if (!nodes) return;
     nodes.forEach(n => {
       n.style.strokeWidth = on ? "2px" : "";
@@ -191,9 +235,11 @@ function highlight(label, on){
   });
 }
 
-// ---------- coloring ----------
+// ---------- coloring + icons ----------
 function updateMapColors(){
   const pal = window.forecastColors || {};
+  const icons = window.forecastIcons || {};
+
   const rows = Array.from(document.querySelectorAll("#forecast-table-body tr")).map(tr => {
     const label = tr.children[2]?.textContent?.trim();   // equals ST_NM
     const day1  = tr.children[3]?.querySelector("select")?.value || null;
@@ -204,10 +250,11 @@ function updateMapColors(){
   ["#indiaMapDay1","#indiaMapDay2"].forEach((svgId, idx) => {
     const dayKey = idx === 0 ? "day1" : "day2";
     const svg = d3.select(svgId);
-    const idxMap = indexByName[svgId] || new Map();
+    const idxMap = indexByGroup[svgId] || new Map();
 
+    // reset
     svg.selectAll(".subdiv").attr("fill","url(#diagonalHatch)");
-    svg.selectAll(".map-icon").remove();
+    svg.selectAll(".icon-layer").selectAll("*").remove();
 
     rows.forEach(rec => {
       const nodes = idxMap.get(rec.key);
@@ -215,17 +262,28 @@ function updateMapColors(){
       const color = pal[rec[dayKey]] || "#eee";
       nodes.forEach(n => n.setAttribute("fill", color));
 
-      // one emoji at the group centroid we computed above
-      const c = centroids[svgId][rec.key];
-      const icon = (window.forecastIcons || {})[rec[dayKey]];
-      if (c && icon) {
-        svg.append("text")
-          .attr("class","map-icon")
-          .attr("x", c[0]).attr("y", c[1])
-          .attr("text-anchor","middle")
-          .attr("alignment-baseline","middle")
+      // icon at ST_NM centroid (with small visible dot + emoji text)
+      const pos = groupCentroid[svgId][rec.key];
+      if (!pos) return;
+      const [x,y] = pos;
+      const g = svg.select(".icon-layer");
+
+      // visible dot (guaranteed visibility)
+      g.append("circle").attr("cx", x).attr("cy", y).attr("r", 5.5)
+        .attr("class","icon-dot")
+        .attr("fill", "#f5a623").attr("stroke","#fff").attr("stroke-width",1.3);
+
+      // emoji (if platform supports it)
+      const emoji = icons[rec[dayKey]];
+      if (emoji) {
+        g.append("text")
+          .attr("x", x).attr("y", y)
+          .attr("text-anchor", "middle")
+          .attr("dominant-baseline", "central")   // better cross-browser centering
           .attr("font-size", 18)
-          .text(icon);
+          .attr("paint-order", "stroke")
+          .attr("stroke", "white").attr("stroke-width", 2)
+          .text(emoji);
       }
     });
   });
