@@ -15,6 +15,19 @@ const ICON_OFFSETS = {
 };
 
 // ---------- helpers ----------
+
+// single shared tooltip element
+let mapTooltip = null;
+function ensureTooltip(){
+  if (!mapTooltip){
+    mapTooltip = d3.select("body")
+      .append("div")
+      .attr("class", "map-tooltip")
+      .style("opacity", 0);
+  }
+  return mapTooltip;
+}
+
 const norm = s => String(s || "")
   .toLowerCase().normalize("NFKD").replace(/[\u0300-\u036f]/g,"")
   .replace(/\s*&\s*/g, " and ").replace(/\s*\([^)]*\)\s*/g, " ")
@@ -156,6 +169,44 @@ async function drawMap(svgId){
     .attr("d", path)
     .attr("fill", "url(#diagonalHatch)")
     .attr("stroke", "#666").attr("stroke-width", 0.7);
+
+  // --- hover tooltip (only for configured 19 sub-divisions) ---
+  const allowed = new Set((window.subdivisions || []).map(r => norm(r.name)));
+  const tooltip = ensureTooltip();
+
+  paths
+    .on("pointerenter", function(){ d3.select(this).raise(); })
+    .on("pointermove", function(event, d){
+      const raw = d?.properties?.[MATCH_KEY] ?? "";
+      const key = norm(raw);
+
+      if (!allowed.has(key)) { tooltip.style("opacity", 0); return; }
+
+      // clamp tooltip inside viewport
+      const pad = 14;
+      const vw = window.innerWidth;
+      const vh = window.innerHeight;
+      const ttW = 200;   // approx width
+      const ttH = 44;    // approx height
+
+      let x = event.clientX + pad;
+      let y = event.clientY + pad;
+      if (x + ttW > vw) x = vw - ttW - pad;
+      if (y + ttH > vh) y = vh - ttH - pad;
+
+      tooltip
+        .style("opacity", 1)
+        .html(raw)  // ST_NM name
+        .style("left", x + "px")
+        .style("top",  y + "px");
+    })
+    .on("pointerleave", function(){
+      tooltip.style("opacity", 0);
+    })
+    .style("cursor", function(d){
+      const raw = d?.properties?.[MATCH_KEY] ?? "";
+      return allowed.has(norm(raw)) ? "pointer" : "default";
+    });
 
   // index & group by ST_NM
   const idx = new Map(), groups = new Map();
