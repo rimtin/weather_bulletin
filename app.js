@@ -9,7 +9,7 @@ let NAME_KEY  = "name";
 const indexByGroup  = { "#indiaMapDay1": new Map(), "#indiaMapDay2": new Map() }; // norm(ST_NM) -> [paths]
 const groupCentroid = { "#indiaMapDay1": {}, "#indiaMapDay2": {} };                // norm(ST_NM) -> [x,y]
 
-// (optional) small nudges per group if any icon needs a tiny tweak
+// (optional) tiny nudges per group if needed later
 const ICON_OFFSETS = {
   // "tamil nadu and puducherry": { dx: 6, dy: -8 }
 };
@@ -143,7 +143,7 @@ async function drawMap(svgId){
   const projection = pickProjection(fc);
   const path = d3.geoPath(projection);
 
-  // draw
+  // draw districts
   const paths = fillLayer.selectAll("path").data(features).join("path")
     .attr("class","subdiv")
     .attr("data-st", d => d.properties?.[STATE_KEY] ?? "")
@@ -153,7 +153,7 @@ async function drawMap(svgId){
     .attr("stroke", "#666").attr("stroke-width", 0.7)
     .on("mouseover", function(){ d3.select(this).raise(); });
 
-  // build group index & one centroid per ST_NM
+  // group by ST_NM
   const idx = new Map();
   const groups = new Map();
   paths.each(function(d){
@@ -164,15 +164,14 @@ async function drawMap(svgId){
   });
   indexByGroup[svgId] = idx;
 
+  // === Projected centroid per group; guarantees center on the drawn map ===
   groupCentroid[svgId] = {};
   groups.forEach((arr, key) => {
     const groupFC = { type: "FeatureCollection", features: arr };
-    // true geographic centroid → project to screen coords
-    const lonLat = d3.geoCentroid(groupFC);
-    let [x, y] = projection(lonLat);
+    let [x, y] = d3.geoPath(projection).centroid(groupFC); // projected centroid
     const off = ICON_OFFSETS[key];
     if (off) { x += off.dx || 0; y += off.dy || 0; }
-    groupCentroid[svgId][key] = [x, y];
+    if (Number.isFinite(x) && Number.isFinite(y)) groupCentroid[svgId][key] = [x, y];
   });
 
   // legend
@@ -239,13 +238,13 @@ function highlight(label, on){
   });
 }
 
-// ---------- coloring + icons (always create/clear icon-layer safely) ----------
+// ---------- coloring + icons ----------
 function updateMapColors(){
   const pal = window.forecastColors || {};
   const icons = window.forecastIcons || {};
 
   const rows = Array.from(document.querySelectorAll("#forecast-table-body tr")).map(tr => {
-    const label = tr.children[2]?.textContent?.trim();   // this equals ST_NM
+    const label = tr.children[2]?.textContent?.trim();   // equals ST_NM
     const day1  = tr.children[3]?.querySelector("select")?.value || null;
     const day2  = tr.children[4]?.querySelector("select")?.value || null;
     return { key: norm(label), day1, day2, raw: label };
@@ -259,8 +258,9 @@ function updateMapColors(){
     // reset fills
     svg.selectAll(".subdiv").attr("fill","url(#diagonalHatch)");
 
-    // ensure + clear icon layer
+    // icon layer: always on top
     const gIcons = ensureLayer(svg, "icon-layer").style("pointer-events","none");
+    gIcons.raise();             // <— keep above everything
     gIcons.selectAll("*").remove();
 
     rows.forEach(rec => {
@@ -276,7 +276,8 @@ function updateMapColors(){
       // dot (always visible)
       gIcons.append("circle")
         .attr("cx", x).attr("cy", y).attr("r", 5.5)
-        .attr("fill", "#f5a623").attr("stroke","#fff").attr("stroke-width",1.3);
+        .attr("fill", "#f5a623").attr("stroke","#fff")
+        .attr("stroke-width",1.3).attr("vector-effect","non-scaling-stroke");
 
       // emoji (on top of dot)
       const emoji = icons[rec[dayKey]];
