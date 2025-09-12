@@ -69,3 +69,22 @@ table{ width:100%; border-collapse:collapse; }
   font-family:"Segoe UI Emoji","Apple Color Emoji","Noto Color Emoji",sans-serif;
 }
 .icon-layer circle{ vector-effect: non-scaling-stroke; }
+
+/* === Map hover tooltip === */
+.map-tooltip{
+  position: fixed;
+  z-index: 9999;
+  pointer-events: none;
+  background: #fff;
+  color: #111;
+  border-radius: 12px;
+  padding: 8px 10px;
+  box-shadow: 0 10px 20px rgba(0,0,0,.18), 0 2px 6px rgba(0,0,0,.12);
+  border: 1px solid rgba(0,0,0,.08);
+  font-size: 13px;
+  font-weight: 700;
+  line-height: 1.2;
+  transform: translate3d(0,0,0);
+}
+@media print { .map-tooltip{ display:none !important; } }
+
