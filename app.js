@@ -1,7 +1,10 @@
-// === Sub-division coloring by ST_NM (exact 20) with aligned icons + per-map legends ===
+// === Sub-division coloring by ST_NM (exact 20) with centered icons + per-map legends ===
 
+// Layout constants
 const W = 860, H = 580, PAD = 18;
-const MATCH_KEY = "ST_NM"; // your 20 labels live here
+
+// We color by this GeoJSON field (your 20 labels live here)
+const MATCH_KEY = "ST_NM";
 let STATE_KEY = "ST_NM";
 let NAME_KEY  = "name";
 
@@ -49,6 +52,7 @@ function ensureLayer(svg, className){
   return g;
 }
 
+// GeoJSON fallback URLs
 const GEO_URLS = [
   "indian_met_zones.geojson",
   "assets/indian_met_zones.geojson",
@@ -164,11 +168,12 @@ async function drawMap(svgId){
   });
   indexByGroup[svgId] = idx;
 
-  // === Projected centroid per group; guarantees center on the drawn map ===
+  // projected centroid per group; guarantees center on the drawn map
   groupCentroid[svgId] = {};
+  const geoPathForCentroid = d3.geoPath(projection);
   groups.forEach((arr, key) => {
     const groupFC = { type: "FeatureCollection", features: arr };
-    let [x, y] = d3.geoPath(projection).centroid(groupFC); // projected centroid
+    let [x, y] = geoPathForCentroid.centroid(groupFC);
     const off = ICON_OFFSETS[key];
     if (off) { x += off.dx || 0; y += off.dy || 0; }
     if (Number.isFinite(x) && Number.isFinite(y)) groupCentroid[svgId][key] = [x, y];
@@ -186,44 +191,105 @@ async function drawMap(svgId){
   }
 }
 
-// ---------- table: fixed 20 (from data.js) ----------
+// ---------- table: fixed 20 with merged State cells ----------
 function buildFixedTable(){
   const tbody = document.getElementById("forecast-table-body");
   if (!tbody) return;
   tbody.innerHTML = "";
 
   const options = window.forecastOptions || [];
-  let i = 1;
 
+  // group sub-divisions by state, preserving original order
+  const byState = new Map();
   (window.subdivisions || []).forEach(row => {
-    const tr = document.createElement("tr");
-
-    const s1 = document.createElement("select");
-    const s2 = document.createElement("select");
-    [s1,s2].forEach(sel=>{
-      options.forEach(opt => {
-        const o = document.createElement("option");
-        o.value = opt; o.textContent = opt;
-        sel.appendChild(o);
-      });
-      sel.addEventListener("change", updateMapColors);
-    });
-
-    tr.innerHTML = `
-      <td>${i++}</td>
-      <td>${row.state}</td>
-      <td>${row.name}</td>
-    `;
-    const td1 = document.createElement("td");
-    const td2 = document.createElement("td");
-    td1.appendChild(s1); td2.appendChild(s2);
-    tr.appendChild(td1); tr.appendChild(td2);
-
-    tr.addEventListener("mouseenter", () => highlight(row.name, true));
-    tr.addEventListener("mouseleave", () => highlight(row.name, false));
-
-    tbody.appendChild(tr);
+    if (!byState.has(row.state)) byState.set(row.state, []);
+    byState.get(row.state).push(row);
   });
+
+  let i = 1;
+  for (const [state, rows] of byState) {
+    rows.forEach((row, j) => {
+      const tr = document.createElement("tr");
+      tr.dataset.state  = state;
+      tr.dataset.subdiv = row.name;
+
+      // S. No.
+      const tdNo = document.createElement("td");
+      tdNo.textContent = i++;
+      tr.appendChild(tdNo);
+
+      // Merged State cell
+      if (j === 0) {
+        const tdState = document.createElement("td");
+        tdState.setAttribute("data-col", "state");
+        tdState.textContent = state;
+        tdState.rowSpan = rows.length;
+        tdState.style.verticalAlign = "middle";
+        tr.appendChild(tdState);
+      }
+
+      // Sub-division name
+      const tdSub = document.createElement("td");
+      tdSub.setAttribute("data-col", "subdiv");
+      tdSub.textContent = row.name;
+      tr.appendChild(tdSub);
+
+      // Day 1 / Day 2 selectors
+      const td1 = document.createElement("td");
+      const td2 = document.createElement("td");
+      td1.setAttribute("data-col","day1");
+      td2.setAttribute("data-col","day2");
+
+      const s1 = document.createElement("select");
+      const s2 = document.createElement("select");
+      [s1, s2].forEach(sel => {
+        options.forEach(opt => {
+          const o = document.createElement("option");
+          o.value = opt; o.textContent = opt;
+          sel.appendChild(o);
+        });
+        sel.addEventListener("change", updateMapColors);
+        if (sel.options.length && sel.selectedIndex < 0) sel.selectedIndex = 0;
+      });
+
+      td1.appendChild(s1);
+      td2.appendChild(s2);
+      tr.appendChild(td1);
+      tr.appendChild(td2);
+
+      tr.addEventListener("mouseenter", () => highlight(row.name, true));
+      tr.addEventListener("mouseleave", () => highlight(row.name, false));
+
+      tbody.appendChild(tr);
+    });
+  }
+
+  // fill palette table (top) if empty
+  const ptBody = document.querySelector("#paletteTable tbody");
+  if (ptBody && !ptBody.children.length) {
+    const pal = window.forecastColors || {};
+    const coverage = {
+      "Clear Sky": "0–10%",
+      "Low Cloud Cover": "10–30%",
+      "Medium Cloud Cover": "30–50%",
+      "High Cloud Cover": "50–75%",
+      "Overcast Cloud Cover": "75–100%"
+    };
+    Object.keys(pal).forEach(label => {
+      const tr = document.createElement("tr");
+      const tdL = document.createElement("td");
+      const sw = document.createElement("span");
+      sw.className = "legend-swatch";
+      sw.style.background = pal[label];
+      sw.style.borderColor = "#999";
+      tdL.appendChild(sw);
+      tdL.appendChild(document.createTextNode(label));
+      const tdC = document.createElement("td");
+      tdC.textContent = coverage[label] || "";
+      tr.appendChild(tdL); tr.appendChild(tdC);
+      ptBody.appendChild(tr);
+    });
+  }
 }
 
 function highlight(label, on){
@@ -240,14 +306,15 @@ function highlight(label, on){
 
 // ---------- coloring + icons ----------
 function updateMapColors(){
-  const pal = window.forecastColors || {};
-  const icons = window.forecastIcons || {};
+  const pal   = window.forecastColors || {};
+  const icons = window.forecastIcons  || {};
 
+  // read logical rows via data-attrs (robust with merged cells)
   const rows = Array.from(document.querySelectorAll("#forecast-table-body tr")).map(tr => {
-    const label = tr.children[2]?.textContent?.trim();   // equals ST_NM
-    const day1  = tr.children[3]?.querySelector("select")?.value || null;
-    const day2  = tr.children[4]?.querySelector("select")?.value || null;
-    return { key: norm(label), day1, day2, raw: label };
+    const subdiv = tr.dataset.subdiv;  // exact ST_NM label
+    const day1   = tr.querySelector('td[data-col="day1"] select')?.value || null;
+    const day2   = tr.querySelector('td[data-col="day2"] select')?.value || null;
+    return { key: norm(subdiv), day1, day2, raw: subdiv };
   });
 
   ["#indiaMapDay1","#indiaMapDay2"].forEach((svgId, idx) => {
@@ -260,7 +327,7 @@ function updateMapColors(){
 
     // icon layer: always on top
     const gIcons = ensureLayer(svg, "icon-layer").style("pointer-events","none");
-    gIcons.raise();             // <— keep above everything
+    gIcons.raise();
     gIcons.selectAll("*").remove();
 
     rows.forEach(rec => {
@@ -279,7 +346,7 @@ function updateMapColors(){
         .attr("fill", "#f5a623").attr("stroke","#fff")
         .attr("stroke-width",1.3).attr("vector-effect","non-scaling-stroke");
 
-      // emoji (on top of dot)
+      // emoji on top
       const emoji = icons[rec[dayKey]];
       if (emoji) {
         gIcons.append("text")
