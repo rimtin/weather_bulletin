@@ -1,5 +1,4 @@
-// === EXACT sub-division set (20) ===
-// Use these names exactly as they appear in your GeoJSON's `name` field.
+// === EXACT sub-division set (20) — names from GeoJSON ST_NM ===
 window.subdivisions = [
   { state: "Punjab",             name: "Punjab" },
   { state: "Rajasthan",          name: "West Rajasthan" },
@@ -23,7 +22,7 @@ window.subdivisions = [
   { state: "Tamil Nadu",         name: "Tamil Nadu & Puducherry" }
 ];
 
-// Excel-style palette (same as before)
+// Central palette (drives selects, legend swatches, map fills)
 window.forecastColors = {
   "Clear Sky": "#A7D8EB",           // 0–10%
   "Low Cloud Cover": "#C4E17F",     // 10–30%
@@ -31,6 +30,8 @@ window.forecastColors = {
   "High Cloud Cover": "#E69536",    // 50–75%
   "Overcast Cloud Cover": "#FF4D4D" // 75–100%
 };
+
+// Options list auto-derived from palette
 window.forecastOptions = Object.keys(window.forecastColors);
 
 // Optional emoji overlay
