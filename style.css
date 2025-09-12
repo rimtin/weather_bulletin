@@ -1,39 +1,39 @@
-
 :root{
-  --bg:#f6f7f9;
-  --card-bg:#fff;
-  --border:#e6e6e6;
-  --text:#1f2937;
-  --muted:#6b7280;
-  --accent:#2563eb;
+  --bg:#f6f7f9; --card-bg:#fff; --border:#e6e6e6; --text:#1f2937; --muted:#6b7280; --accent:#2563eb;
 }
 
 *{ box-sizing:border-box; }
 html,body{ margin:0; padding:0; background:var(--bg); color:var(--text); font-family:system-ui,-apple-system,Segoe UI,Roboto,Inter,Ubuntu,Arial,sans-serif; }
-
 .container{ max-width:1024px; margin:24px auto; padding:0 16px; }
 
 .header{ display:flex; align-items:flex-end; justify-content:space-between; gap:16px; margin-bottom:14px; }
-h1{ margin:0 0 4px; font-size:22px; font-weight:800; letter-spacing:.2px; }
+h1{ margin:0 0 4px; font-size:22px; font-weight:800; }
 .subhead{ color:var(--muted); font-size:13px; }
-
 .btn{ background:var(--accent); color:#fff; border:0; padding:10px 14px; border-radius:10px; font-weight:600; cursor:pointer; }
 .btn:hover{ filter:brightness(1.05); }
 
 .card{ background:var(--card-bg); border:1px solid var(--border); border-radius:14px; padding:14px; margin:12px 0 18px; }
 .card h3{ margin:4px 0 12px; font-size:16px; font-weight:700; }
 
-.small-note{ margin:8px 0 0; color:var(--muted); font-size:12px; }
-
+/* Data table */
 .table-wrap{ overflow:auto; border-radius:10px; }
 table{ width:100%; border-collapse:collapse; }
 .data-table th, .data-table td{ border:1px solid var(--border); padding:8px 10px; font-size:14px; }
 .data-table thead th{ background:#fafafa; text-align:left; position:sticky; top:0; z-index:1; }
 .data-table select{ width:100%; padding:6px 8px; border-radius:8px; border:1px solid var(--border); background:#fff; }
 
-/* legend table (palette) */
-.legend-table th, .legend-table td{ border:1px solid var(--border); padding:8px 10px; font-size:13px; }
-.legend-swatch{ width:22px; height:14px; border-radius:3px; border:1px solid #999; display:inline-block; vertical-align:middle; margin-right:8px; }
+/* === COLORED cloud table (exact look of your sample) === */
+.cloud-table{ width:100%; border-collapse:collapse; border:2px solid #c30000; }
+.cloud-table thead th{
+  background:#ff4d4d !important; color:#fff; border:2px solid #c30000; padding:8px 10px;
+  text-align:center; font-weight:800;
+}
+.cloud-table td{
+  border-left:2px solid #c30000; border-right:2px solid #c30000;
+  padding:8px 10px; text-align:center; font-weight:700;
+}
+.cloud-table tbody tr:last-child td{ border-bottom:2px solid #c30000; }
+.cloud-note{ margin:8px 0 0; font-size:12px; }
 
 /* map cards */
 .map-card{ padding:10px; border-radius:12px; background:#fff; border:1px solid var(--border); margin:12px 0 18px; }
@@ -44,7 +44,6 @@ table{ width:100%; border-collapse:collapse; }
 
 /* PRINT LAYOUT */
 @page { size: A4 portrait; margin: 12mm; }
-
 .print-page{ margin-bottom:24px; }
 .page-break-avoid{ break-inside: avoid; page-break-inside: avoid; }
 .screen-only{ display:block; }
@@ -54,20 +53,17 @@ table{ width:100%; border-collapse:collapse; }
   body { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
   .print-page{ break-after: page; page-break-after: always; }
   .screen-only{ display:none !important; }
-  .print-only{ display:block !important; }
+  .cloud-table thead th, .cloud-table td{ -webkit-print-color-adjust:exact; print-color-adjust:exact; }
   .data-table th, .data-table td{ font-size:11pt; padding:6px 8px; }
-  .legend-table th, .legend-table td{ font-size:10.5pt; padding:5px 7px; }
   #page2 .map-card{ height: 96mm; }
   #page2 svg{ width:100% !important; height: calc(100% - 28px) !important; }
   svg{ shape-rendering: crispEdges; }
 }
 
-/* Map legend text/icon tweaks (both screen & print) */
+/* Map legend + icons */
 .map-legend text{ font-size:12px; }
 .icon-layer text{
-  paint-order: stroke;
-  stroke: #fff;
-  stroke-width: 2px;
-  font-family: "Segoe UI Emoji","Apple Color Emoji","Noto Color Emoji",sans-serif;
+  paint-order: stroke; stroke:#fff; stroke-width:2px;
+  font-family:"Segoe UI Emoji","Apple Color Emoji","Noto Color Emoji",sans-serif;
 }
 .icon-layer circle{ vector-effect: non-scaling-stroke; }
