@@ -1,4 +1,4 @@
-// === EXACT sub-division set (20) — names from GeoJSON ST_NM ===
+// === 20 sub-divisions (exact ST_NM values from your GeoJSON) ===
 window.subdivisions = [
   { state: "Punjab",             name: "Punjab" },
   { state: "Rajasthan",          name: "West Rajasthan" },
@@ -22,19 +22,17 @@ window.subdivisions = [
   { state: "Tamil Nadu",         name: "Tamil Nadu & Puducherry" }
 ];
 
-// Central palette (drives selects, legend swatches, map fills)
+// Palette → drives selects, map fills, and legend colors
 window.forecastColors = {
-  "Clear Sky": "#A7D8EB",           // 0–10%
-  "Low Cloud Cover": "#C4E17F",     // 10–30%
-  "Medium Cloud Cover": "#FFF952",  // 30–50%
-  "High Cloud Cover": "#E69536",    // 50–75%
-  "Overcast Cloud Cover": "#FF4D4D" // 75–100%
+  "Clear Sky": "#A7D8EB",
+  "Low Cloud Cover": "#C4E17F",
+  "Medium Cloud Cover": "#FFF952",
+  "High Cloud Cover": "#E69536",
+  "Overcast Cloud Cover": "#FF4D4D"
 };
-
-// Options list auto-derived from palette
 window.forecastOptions = Object.keys(window.forecastColors);
 
-// Optional emoji overlay
+// Emoji overlay
 window.forecastIcons = {
   "Clear Sky": "☀️",
   "Low Cloud Cover": "🌤️",
@@ -42,6 +40,15 @@ window.forecastIcons = {
   "High Cloud Cover": "🌥️",
   "Overcast Cloud Cover": "☁️"
 };
+
+// Colored cloud-table rows
+window.cloudRows = [
+  { cover: "0–10 %",   label: "Clear Sky",            type: "No Cloud" },
+  { cover: "10–30 %",  label: "Low Cloud Cover",      type: "Few Clouds" },
+  { cover: "30–50 %",  label: "Medium Cloud Cover",   type: "Scattered Clouds/Partly Cloudy" },
+  { cover: "50–75 %",  label: "High Cloud Cover",     type: "Broken Clouds/Mostly Cloudy" },
+  { cover: "75–100 %", label: "Overcast Cloud Cover", type: "Cloudy/ Overcast" }
+];
 
 // IST date helper
 function updateISTDate() {
