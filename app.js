@@ -1,16 +1,20 @@
-// === Sub-division coloring by ST_NM (exact 20) with centered icons + per-map legends ===
+// === Sub-division coloring by ST_NM with centered icons + per-map legends ===
 
 const W = 860, H = 580, PAD = 18;
-const MATCH_KEY = "ST_NM";
+const MATCH_KEY = "ST_NM";       // color by this field in GeoJSON
 let STATE_KEY = "ST_NM";
 let NAME_KEY  = "name";
 
-const indexByGroup  = { "#indiaMapDay1": new Map(), "#indiaMapDay2": new Map() };
-const groupCentroid = { "#indiaMapDay1": {}, "#indiaMapDay2": {} };
+// Per-map stores
+const indexByGroup  = { "#indiaMapDay1": new Map(), "#indiaMapDay2": new Map() }; // norm(ST_NM) -> [paths]
+const groupCentroid = { "#indiaMapDay1": {}, "#indiaMapDay2": {} };                // norm(ST_NM) -> [x,y]
 
-// optional per-group nudge
-const ICON_OFFSETS = { /* "tamil nadu and puducherry": { dx: 6, dy: -8 } */ };
+// optional fine-tune offsets per group
+const ICON_OFFSETS = {
+  // "tamil nadu and puducherry": { dx: 6, dy: -8 }
+};
 
+// ---------- helpers ----------
 const norm = s => String(s || "")
   .toLowerCase().normalize("NFKD").replace(/[\u0300-\u036f]/g,"")
   .replace(/\s*&\s*/g, " and ").replace(/\s*\([^)]*\)\s*/g, " ")
@@ -18,7 +22,7 @@ const norm = s => String(s || "")
 
 function detectKeys(features){
   const sKeys = ["ST_NM","st_nm","STATE","STATE_UT","NAME_1","state_name","State"];
-  const dKeys = ["name","DISTRICT","NAME_2","Name","district","dist_name"];
+  const dKeys = ["DISTRICT","name","NAME_2","Name","district","dist_name"];
   const sample = features[0]?.properties || {};
   STATE_KEY = sKeys.find(k => k in sample) || STATE_KEY;
   NAME_KEY  = dKeys.find(k => k in sample) || NAME_KEY;
@@ -40,7 +44,7 @@ function ensureLayer(svg, className){
   return g;
 }
 
-// robust GeoJSON fallbacks
+// Robust GeoJSON fallbacks
 const GEO_URLS = [
   "indian_met_zones.geojson",
   "assets/indian_met_zones.geojson",
@@ -63,20 +67,21 @@ async function fetchFirst(urls){
   throw new Error("No GeoJSON found");
 }
 
-/* ---------- Cloud table (COLORED) ---------- */
+/* ---------- COLORED cloud table ---------- */
 function buildCloudTable(){
-  const tbody = document.querySelector("#cloudTable tbody");
-  if (!tbody) return;
+  const table = document.getElementById("cloudTable");
+  if (!table) return;
+  const tbody = table.querySelector("tbody") || table.appendChild(document.createElement("tbody"));
   tbody.innerHTML = "";
 
-  const pal = window.forecastColors || {};
+  const pal  = window.forecastColors || {};
   const rows = window.cloudRows || [];
 
   rows.forEach((r, i) => {
     const tr = document.createElement("tr");
     tr.style.background = pal[r.label] || "#fff";
     tr.innerHTML = `
-      <td>${i+1}</td>
+      <td>${i + 1}</td>
       <td>${r.cover}</td>
       <td>${r.label}</td>
       <td>${r.type}</td>
@@ -85,7 +90,7 @@ function buildCloudTable(){
   });
 }
 
-/* ---------- Legends ---------- */
+/* ---------- legends ---------- */
 function drawLegend(svg, title){
   svg.selectAll(".map-legend").remove();
   const pal = window.forecastColors || {};
@@ -113,7 +118,7 @@ function drawLegend(svg, title){
   });
 }
 
-/* ---------- Draw one map ---------- */
+/* ---------- draw one map ---------- */
 async function drawMap(svgId){
   const svg = d3.select(svgId);
   svg.selectAll("*").remove();
@@ -127,7 +132,7 @@ async function drawMap(svgId){
   const fillLayer = ensureLayer(svg, "fill-layer");
   ensureLayer(svg, "icon-layer").style("pointer-events","none");
 
-  // load data
+  // load features
   let features = [];
   try{
     const geo = await fetchFirst(GEO_URLS);
@@ -140,12 +145,10 @@ async function drawMap(svgId){
 
   detectKeys(features);
 
-  // projection
   const fc = { type:"FeatureCollection", features };
   const projection = pickProjection(fc);
   const path = d3.geoPath(projection);
 
-  // draw districts
   const paths = fillLayer.selectAll("path").data(features).join("path")
     .attr("class","subdiv")
     .attr("data-st", d => d.properties?.[STATE_KEY] ?? "")
@@ -154,7 +157,7 @@ async function drawMap(svgId){
     .attr("fill", "url(#diagonalHatch)")
     .attr("stroke", "#666").attr("stroke-width", 0.7);
 
-  // group by ST_NM
+  // index & group by ST_NM
   const idx = new Map(), groups = new Map();
   paths.each(function(d){
     const key = norm(String(d.properties?.[MATCH_KEY] ?? ""));
@@ -166,10 +169,10 @@ async function drawMap(svgId){
 
   // projected centroid per group
   groupCentroid[svgId] = {};
-  const geoPathForCentroid = d3.geoPath(projection);
+  const gp = d3.geoPath(projection);
   groups.forEach((arr, key) => {
     const groupFC = { type: "FeatureCollection", features: arr };
-    let [x, y] = geoPathForCentroid.centroid(groupFC);
+    let [x, y] = gp.centroid(groupFC);
     const off = ICON_OFFSETS[key]; if (off) { x += off.dx||0; y += off.dy||0; }
     if (Number.isFinite(x) && Number.isFinite(y)) groupCentroid[svgId][key] = [x,y];
   });
@@ -185,7 +188,7 @@ async function drawMap(svgId){
   }
 }
 
-/* ---------- Forecast table WITH merged State cells ---------- */
+/* ---------- Forecast table with merged State cells ---------- */
 function buildFixedTable(){
   const tbody = document.getElementById("forecast-table-body");
   if (!tbody) return;
@@ -193,6 +196,7 @@ function buildFixedTable(){
 
   const options = window.forecastOptions || [];
 
+  // group by state
   const byState = new Map();
   (window.subdivisions || []).forEach(row => {
     if (!byState.has(row.state)) byState.set(row.state, []);
@@ -224,13 +228,16 @@ function buildFixedTable(){
 
       const td1 = document.createElement("td");
       const td2 = document.createElement("td");
-      td1.setAttribute("data-col","day1"); td2.setAttribute("data-col","day2");
+      td1.setAttribute("data-col","day1");
+      td2.setAttribute("data-col","day2");
 
       const s1 = document.createElement("select");
       const s2 = document.createElement("select");
       [s1, s2].forEach(sel=>{
-        (window.forecastOptions || []).forEach(opt => {
-          const o = document.createElement("option"); o.value = opt; o.textContent = opt; sel.appendChild(o);
+        options.forEach(opt => {
+          const o = document.createElement("option");
+          o.value = opt; o.textContent = opt;
+          sel.appendChild(o);
         });
         sel.addEventListener("change", updateMapColors);
         if (sel.options.length && sel.selectedIndex < 0) sel.selectedIndex = 0;
@@ -259,7 +266,7 @@ function highlight(label, on){
   });
 }
 
-/* ---------- Coloring + icons ---------- */
+/* ---------- coloring + icons ---------- */
 function updateMapColors(){
   const pal   = window.forecastColors || {};
   const icons = window.forecastIcons  || {};
@@ -276,8 +283,10 @@ function updateMapColors(){
     const svg = d3.select(svgId);
     const idxMap = indexByGroup[svgId] || new Map();
 
+    // reset fills
     svg.selectAll(".subdiv").attr("fill","url(#diagonalHatch)");
 
+    // icon layer on top
     const gIcons = ensureLayer(svg, "icon-layer").style("pointer-events","none");
     gIcons.raise(); gIcons.selectAll("*").remove();
 
@@ -291,6 +300,7 @@ function updateMapColors(){
       if (!pos) return;
       const [x,y] = pos;
 
+      // dot + emoji
       gIcons.append("circle")
         .attr("cx", x).attr("cy", y).attr("r", 5.5)
         .attr("fill", "#f5a623").attr("stroke","#fff")
@@ -312,10 +322,10 @@ function updateMapColors(){
   });
 }
 
-/* ---------- Init (DOMContentLoaded avoids onload conflicts) ---------- */
+/* ---------- init ---------- */
 function init(){
   if (typeof updateISTDate === "function") updateISTDate();
-  buildCloudTable();                 // <— fills the colored table
+  buildCloudTable();
   drawMap("#indiaMapDay1");
   drawMap("#indiaMapDay2");
 }
