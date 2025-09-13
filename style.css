@@ -22,53 +22,66 @@ h1{ margin:0 0 4px; font-size:22px; font-weight:800; color:#000; }
 .card{ background:var(--card-bg); border:1px solid #e6e6e6; border-radius:14px; padding:14px; margin:12px 0 18px; }
 .card h3{ margin:4px 0 12px; font-size:16px; font-weight:700; color:#000; }
 
-/* ---------- Tables: jet black, NO gaps, strong outer frame ---------- */
+/* ---------- Tables: heavy, gapless, centered (single canonical set) ---------- */
 .table-wrap{ overflow:auto; border-radius:12px; }
-table{ width:100%; border-collapse:collapse; border-spacing:0; } /* removes any inter-column gap */
+table{ width:100%; border-collapse:separate; border-spacing:0; table-layout:fixed; } /* important: separate */
 
 .data-table, .cloud-table{
-  border:4px solid #000;     /* heavy outer border */
+  border:0;
+  outline:4px solid #000;        /* heavy outer frame that never breaks */
   border-radius:12px;
   overflow:hidden;
 }
 
-/* Header band */
-.data-table thead th, .cloud-table thead th{
-  background:#bfe6ff;        /* blue header */
-  color:#000;
-  border:3px solid #000;     /* thick inner grid */
-  padding:10px 12px;
-  font-weight:800;
-  text-align:center;         /* center header text */
-}
-
-/* Body cells */
-.data-table td, .cloud-table td{
-  border:3px solid #000;     /* thick inner grid */
+/* Cells (header + body) */
+.data-table th, .data-table td,
+.cloud-table th, .cloud-table td{
+  border:0;                       /* we’ll draw a single grid below */
   padding:10px 12px;
   font-size:14px;
   color:#000;
-  text-align:center;         /* center all body text */
+  text-align:center;              /* center ALL text */
   vertical-align:middle;
+  background-clip:padding-box;    /* avoids hairline artifacts in Chrome */
 }
 
-/* Keep names on one line */
+/* Header band */
+.data-table thead th, .cloud-table thead th{
+  background:#bfe6ff;
+  font-weight:800;
+}
+
+/* Build the inner grid (gap-proof even with rowspans) */
+.data-table tr > * ,
+.cloud-table tr > * { border-right:3px solid #000; border-bottom:3px solid #000; }
+
+.data-table tr > *:last-child,
+.cloud-table tr > *:last-child { border-right:0; }
+
+.data-table thead tr > * ,
+.cloud-table thead tr > * { border-top:3px solid #000; }
+
+.data-table tbody tr:first-child > * ,
+.cloud-table tbody tr:first-child > * { border-top:0; } /* header draws top */
+
+.data-table tr > *:first-child,
+.cloud-table tr > *:first-child { border-left:3px solid #000; }
+
+/* Keep long labels intact */
 .data-table td[data-col="state"],
 .data-table td[data-col="subdiv"]{ white-space:nowrap; }
 
-/* Selects: colored by selection + centered text */
+/* Selects: centered; JS paints background by selected value */
 .data-table select{
   width:100%;
   min-width:230px;
   padding:8px 10px;
   border:3px solid #000;
   border-radius:12px;
-  background:#fff;           /* JS will override bg per selection */
+  background:#fff;
   color:#000;
-  font-size:14px;
-  font-weight:700;
-  text-align:center;         /* Firefox/others */
-  text-align-last:center;    /* Chromium */
+  font-size:14px; font-weight:700;
+  text-align:center; text-align-last:center;
 }
 
 /* Classification table note */
@@ -120,3 +133,4 @@ table{ width:100%; border-collapse:collapse; border-spacing:0; } /* removes any 
   max-width: 220px; white-space: nowrap;
 }
 @media print { .map-tooltip{ display:none !important; } }
+
