@@ -13,14 +13,49 @@ html,body{
 }
 .container{ max-width:1100px; margin:24px auto; padding:0 16px; }
 
-.header{ display:flex; align-items:flex-end; justify-content:space-between; gap:16px; margin-bottom:14px; }
-h1{ margin:0 0 4px; font-size:22px; font-weight:800; color:#000; }
-.subhead{ color:#000; font-size:13px; }
+/* --- Header: centered title, button on right (desktop) --- */
+.header{
+  position: relative;
+  display: flex;
+  align-items: flex-end;
+  gap: 16px;
+  margin-bottom: 14px;
+  padding-right: 140px;       /* space so button won't overlap centered title */
+}
+.header .title-wrap{
+  flex: 1 1 auto;
+  text-align: center;
+}
+.header .actions{
+  position: absolute;
+  right: 0;
+  bottom: 0;
+}
+h1{
+  margin: 0 0 6px;
+  font-weight: 900;
+  letter-spacing: .2px;
+  text-align: center;
+  font-size: clamp(28px, 3.6vw, 40px);
+  color: #000;
+}
+.subhead{
+  text-align: center;
+  margin-top: 2px;
+  font-size: clamp(13px, 1.6vw, 16px);
+  color: #000;
+}
 .btn{ background:var(--accent); color:#fff; border:0; padding:10px 14px; border-radius:10px; font-weight:600; cursor:pointer; }
 .btn:hover{ filter:brightness(1.05); }
 
 .card{ background:var(--card-bg); border:1px solid #e6e6e6; border-radius:14px; padding:14px; margin:12px 0 18px; }
-.card h3{ margin:4px 0 12px; font-size:16px; font-weight:700; color:#000; }
+.card h3{
+  margin:4px 0 12px;
+  font-size: clamp(18px, 2.4vw, 22px);
+  font-weight:800;
+  color:#000;
+  text-align:center;
+}
 
 /* ---------- Tables: heavy, gapless, centered ---------- */
 .table-wrap{ overflow:auto; border-radius:12px; }
@@ -28,20 +63,20 @@ table{ width:100%; border-collapse:separate; border-spacing:0; table-layout:fixe
 
 .data-table, .cloud-table{
   border:0;
-  outline:4px solid #000;          /* heavy outer frame that never breaks */
+  outline:4px solid #000;        /* heavy outer frame that never breaks */
   border-radius:12px;
   overflow:hidden;
 }
 
 .data-table th, .data-table td,
 .cloud-table th, .cloud-table td{
-  border:0;                         /* grid drawn below */
+  border:0;                       /* grid drawn below */
   padding:10px 12px;
   font-size:14px;
   color:#000;
-  text-align:center;                /* center ALL text */
+  text-align:center;
   vertical-align:middle;
-  background-clip:padding-box;      /* avoids hairline artifacts */
+  background-clip:padding-box;    /* avoids hairline artifacts */
 }
 
 /* header band */
@@ -54,7 +89,7 @@ table{ width:100%; border-collapse:separate; border-spacing:0; table-layout:fixe
 .data-table tr > * ,
 .cloud-table tr > * { border-right:3px solid #000; border-bottom:3px solid #000; }
 
-/* ✅ Fix: keep the right-most vertical line visible */
+/* keep the right-most vertical line visible */
 .data-table tr > *:last-child,
 .cloud-table tr > *:last-child { border-right:3px solid #000 !important; }
 
@@ -95,13 +130,13 @@ table{ width:100%; border-collapse:separate; border-spacing:0; table-layout:fixe
   width:100%;
   min-height:220px;
   resize: both;           /* ↔ and ↕ */
-  overflow:auto;          /* scroll if user resizes smaller */
+  overflow:auto;
   border:3px solid #000;
   border-radius:10px;
   padding:10px;
   font-size:14px;
   color:#000;
-  max-width:none;         /* allow horizontal resize */
+  max-width:none;
   -webkit-overflow-scrolling: touch;
 }
 
@@ -114,13 +149,29 @@ table{ width:100%; border-collapse:separate; border-spacing:0; table-layout:fixe
 
 @media print{
   body { -webkit-print-color-adjust: exact; print-color-adjust: exact; color:#000; }
+  .container{ max-width:none; margin:0; padding:0; }
+
+  /* place notes under the table for PDF; hide original notes page */
+  #notes-print-card.print-only{ display:block !important; break-inside: avoid; }
+  #page3{ display:none !important; }
+
+  /* bigger maps that fit the page nicely in PDF */
+  #page2 .map-card{
+    border:0;
+    padding: 6mm 8mm;
+    height: 125mm;                 /* adjust to taste: 125–135mm */
+    break-inside: avoid;
+  }
+  #page2 svg{
+    width:100% !important;
+    height: calc(100% - 24px) !important;
+  }
+
   .print-page{ break-after: page; page-break-after: always; }
   .screen-only{ display:none !important; }
   .data-table th, .data-table td, .cloud-table th, .cloud-table td{
     -webkit-print-color-adjust: exact; print-color-adjust: exact; color:#000;
   }
-  #page2 .map-card{ height: 96mm; }
-  #page2 svg{ width:100% !important; height: calc(100% - 28px) !important; }
   svg{ shape-rendering: crispEdges; }
 }
 
@@ -148,17 +199,24 @@ table{ width:100%; border-collapse:separate; border-spacing:0; table-layout:fixe
 /* ---------- Responsive (mobile-friendly) ---------- */
 @media (max-width: 900px){
   .container{ padding:0 12px; }
-  h1{ font-size:20px; }
   .map-card svg{ height: 58vw; min-height: 300px; }
-  /* allow tables to scroll horizontally on small screens */
   .table-wrap{ overflow-x:auto; }
   table{ min-width: 820px; }          /* keep structure; user can scroll */
   .data-table select{ min-width: 200px; font-size:13px; }
 }
 @media (max-width: 640px){
-  h1{ font-size:18px; }
-  .header{ flex-direction:column; align-items:flex-start; gap:8px; }
-  .btn{ width:100%; }
+  .header{
+    padding-right:0;
+    align-items:center;
+  }
+  .header .actions{
+    position: static;
+    width: 100%;
+    display: flex;
+    justify-content: center;
+    margin-top: 8px;
+  }
+  .btn{ width: max(180px, 50%); }
   .map-card svg{ height: 64vw; min-height: 260px; }
   table{ min-width: 740px; }
   .data-table select{ min-width: 180px; font-size:13px; }
