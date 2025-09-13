@@ -1,4 +1,4 @@
-// === 20 sub-divisions (exact ST_NM values from your GeoJSON) ===
+// === 19 sub-divisions (Bihar removed) ===
 window.subdivisions = [
   { state: "Punjab",             name: "Punjab" },
   { state: "Rajasthan",          name: "West Rajasthan" },
@@ -7,7 +7,6 @@ window.subdivisions = [
   { state: "Gujarat",            name: "Gujarat region" },
   { state: "Uttar Pradesh",      name: "West Uttar Pradesh" },
   { state: "Uttar Pradesh",      name: "East Uttar Pradesh" },
-  //{ state: "Bihar",              name: "Bihar" },
   { state: "Madhya Pradesh",     name: "West Madhya Pradesh" },
   { state: "Madhya Pradesh",     name: "East Madhya Pradesh" },
   { state: "Chhattisgarh",       name: "Chhattisgarh" },
@@ -22,17 +21,26 @@ window.subdivisions = [
   { state: "Tamil Nadu",         name: "Tamil Nadu & Puducherry" }
 ];
 
-// Palette → drives selects, map fills, and legend colors
+/* Bright palette (used by maps, legend, and SELECT backgrounds) */
 window.forecastColors = {
-  "Clear Sky": "#A7D8EB",
-  "Low Cloud Cover": "#C4E17F",
-  "Medium Cloud Cover": "#FFF952",
-  "High Cloud Cover": "#E69536",
-  "Overcast Cloud Cover": "#FF4D4D"
+  "Clear Sky":            "#66CCFF",  // bright sky blue
+  "Low Cloud Cover":      "#57E66D",  // bright green
+  "Medium Cloud Cover":   "#FFF500",  // vivid yellow
+  "High Cloud Cover":     "#FF8A00",  // orange
+  "Overcast Cloud Cover": "#FF0000"   // red
 };
 window.forecastOptions = Object.keys(window.forecastColors);
 
-// Emoji overlay
+/* Classification table rows (also bright; can be same as forecastColors) */
+window.cloudRowColors = {
+  "Clear Sky":            "#66CCFF",
+  "Low Cloud Cover":      "#57E66D",
+  "Medium Cloud Cover":   "#FFF500",
+  "High Cloud Cover":     "#FF8A00",
+  "Overcast Cloud Cover": "#FF0000"
+};
+
+/* Icons */
 window.forecastIcons = {
   "Clear Sky": "☀️",
   "Low Cloud Cover": "🌤️",
@@ -41,7 +49,7 @@ window.forecastIcons = {
   "Overcast Cloud Cover": "☁️"
 };
 
-// Colored cloud-table rows
+/* Classification rows */
 window.cloudRows = [
   { cover: "0–10 %",   label: "Clear Sky",            type: "No Cloud" },
   { cover: "10–30 %",  label: "Low Cloud Cover",      type: "Few Clouds" },
@@ -50,7 +58,7 @@ window.cloudRows = [
   { cover: "75–100 %", label: "Overcast Cloud Cover", type: "Cloudy/ Overcast" }
 ];
 
-// IST date helper
+/* Date */
 function updateISTDate() {
   const now = new Date();
   const formatted = new Intl.DateTimeFormat('en-IN', {
