@@ -21,7 +21,7 @@ window.subdivisions = [
   { state: "Tamil Nadu",         name: "Tamil Nadu & Puducherry" }
 ];
 
-/* Bright palette (used by maps, legend, and SELECT backgrounds) */
+/* Bright palette (maps, legend, and SELECT backgrounds) */
 window.forecastColors = {
   "Clear Sky":            "#66CCFF",  // bright sky blue
   "Low Cloud Cover":      "#57E66D",  // bright green
@@ -31,7 +31,7 @@ window.forecastColors = {
 };
 window.forecastOptions = Object.keys(window.forecastColors);
 
-/* Classification table rows (also bright; can be same as forecastColors) */
+/* Classification table rows (bright) */
 window.cloudRowColors = {
   "Clear Sky":            "#66CCFF",
   "Low Cloud Cover":      "#57E66D",
@@ -58,12 +58,13 @@ window.cloudRows = [
   { cover: "75–100 %", label: "Overcast Cloud Cover", type: "Cloudy/ Overcast" }
 ];
 
-/* Date */
+/* IST date */
 function updateISTDate() {
   const now = new Date();
   const formatted = new Intl.DateTimeFormat('en-IN', {
     timeZone: 'Asia/Kolkata',
     day: '2-digit', month: 'long', year: 'numeric'
   }).format(now);
-  document.getElementById('forecast-date').textContent = formatted;
+  const el = document.getElementById('forecast-date');
+  if (el) el.textContent = formatted;
 }
