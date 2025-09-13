@@ -15,7 +15,7 @@
     <!-- Page 1 -->
     <section id="page1" class="print-page">
       <header class="header">
-        <div>
+        <div class="title-wrap">
           <h1>Cloud Coverage Forecast Bulletin</h1>
           <div class="subhead">Forecast Date: <span id="forecast-date">—</span></div>
         </div>
@@ -24,20 +24,22 @@
         </div>
       </header>
 
-      <!-- Colored cloud table (rows colored by palette) -->
-      <div class="card" id="cloud-card">
+      <!-- Colored cloud classification table -->
+      <div class="card">
         <h3>Cloud Cover Classification</h3>
-        <table class="cloud-table" id="cloudTable">
-          <thead>
-            <tr>
-              <th style="width:70px">S. No.</th>
-              <th style="width:170px">Sky Covered by clouds</th>
-              <th style="width:240px">Cloud Cover</th>
-              <th>Cloud Type</th>
-            </tr>
-          </thead>
-          <tbody></tbody>
-        </table>
+        <div class="table-wrap">
+          <table class="cloud-table" id="cloudTable">
+            <thead>
+              <tr>
+                <th style="width:72px">S. No.</th>
+                <th style="width:170px">Sky Covered by clouds</th>
+                <th style="width:240px">Cloud Cover</th>
+                <th>Cloud Type</th>
+              </tr>
+            </thead>
+            <tbody></tbody>
+          </table>
+        </div>
         <p class="cloud-note"><strong>Note:</strong> <em>This terminology is for local use only.</em></p>
       </div>
 
@@ -48,7 +50,7 @@
           <table class="data-table">
             <thead>
               <tr>
-                <th style="width:70px">S. No.</th>
+                <th style="width:72px">S. No.</th>
                 <th style="width:240px">State</th>
                 <th>Sub Division</th>
                 <th style="width:260px">Day 1</th>
@@ -58,6 +60,12 @@
             <tbody id="forecast-table-body"></tbody>
           </table>
         </div>
+      </div>
+
+      <!-- PRINT-ONLY Notes directly under table -->
+      <div id="notes-print-card" class="card print-only">
+        <h3>Dialog / Notes</h3>
+        <textarea id="notes-print" class="notes-box" readonly></textarea>
       </div>
     </section>
 
@@ -74,13 +82,14 @@
       </div>
     </section>
 
-    <!-- Page 3 -->
+    <!-- Page 3 (screen notes; hidden in PDF) -->
     <section id="page3" class="print-page">
       <div class="card">
         <h3>Dialog / Notes</h3>
         <textarea id="notes" placeholder="Add your notes here..." class="notes-box"></textarea>
       </div>
     </section>
+
   </div>
 
   <!-- Load data first, then app -->
