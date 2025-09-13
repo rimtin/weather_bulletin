@@ -1,5 +1,7 @@
 :root{
-  --bg:#f6f7f9; --card-bg:#fff; --accent:#2563eb;
+  --bg:#f6f7f9;
+  --card-bg:#fff;
+  --accent:#2563eb;
 }
 
 /* ---------- Base layout ---------- */
@@ -14,68 +16,70 @@ html,body{
 .header{ display:flex; align-items:flex-end; justify-content:space-between; gap:16px; margin-bottom:14px; }
 h1{ margin:0 0 4px; font-size:22px; font-weight:800; color:#000; }
 .subhead{ color:#000; font-size:13px; }
-
 .btn{ background:var(--accent); color:#fff; border:0; padding:10px 14px; border-radius:10px; font-weight:600; cursor:pointer; }
 .btn:hover{ filter:brightness(1.05); }
 
 .card{ background:var(--card-bg); border:1px solid #e6e6e6; border-radius:14px; padding:14px; margin:12px 0 18px; }
 .card h3{ margin:4px 0 12px; font-size:16px; font-weight:700; color:#000; }
 
-/* ---------- Tables: jet black, no gaps, strong grid ---------- */
+/* ---------- Tables: jet black, NO gaps, strong outer frame ---------- */
 .table-wrap{ overflow:auto; border-radius:12px; }
-table{ width:100%; border-collapse:collapse; border-spacing:0; } /* removes the gap */
+table{ width:100%; border-collapse:collapse; border-spacing:0; } /* removes any inter-column gap */
 
 .data-table, .cloud-table{
-  border:2px solid #000;
+  border:4px solid #000;     /* heavy outer border */
   border-radius:12px;
   overflow:hidden;
 }
 
 /* Header band */
 .data-table thead th, .cloud-table thead th{
-  background:#bfe6ff;      /* light blue header */
+  background:#bfe6ff;        /* blue header */
   color:#000;
-  border:2px solid #000;   /* collapsed to a single strong grid */
+  border:3px solid #000;     /* thick inner grid */
   padding:10px 12px;
   font-weight:800;
-  text-align:center;
+  text-align:center;         /* center header text */
 }
 
 /* Body cells */
 .data-table td, .cloud-table td{
-  border:2px solid #000;
+  border:3px solid #000;     /* thick inner grid */
   padding:10px 12px;
   font-size:14px;
   color:#000;
+  text-align:center;         /* center all body text */
+  vertical-align:middle;
 }
 
-/* Keep State/Sub Division on one line */
+/* Keep names on one line */
 .data-table td[data-col="state"],
 .data-table td[data-col="subdiv"]{ white-space:nowrap; }
 
-/* Roomy selects so long labels never clip */
+/* Selects: colored by selection + centered text */
 .data-table select{
   width:100%;
   min-width:230px;
   padding:8px 10px;
-  border:2px solid #000;
+  border:3px solid #000;
   border-radius:12px;
-  background:#fff;
+  background:#fff;           /* JS will override bg per selection */
   color:#000;
   font-size:14px;
+  font-weight:700;
+  text-align:center;         /* Firefox/others */
+  text-align-last:center;    /* Chromium */
 }
 
-/* ----- Cloud classification table specifics ----- */
+/* Classification table note */
 .cloud-note{ margin:8px 0 0; font-size:12px; color:#000; }
-/* brighter swatches (rows are colored inline by app.js; these ensure print fidelity) */
-.cloud-table tbody td{ color:#000 !important; font-weight:700; }
 
 /* ---------- Map cards ---------- */
 .map-card{ padding:10px; border-radius:12px; background:#fff; border:1px solid #e6e6e6; margin:12px 0 18px; }
 .map-card h4{ margin:6px 0 10px; font-weight:700; font-size:15px; color:#000; }
 
 /* ---------- Notes ---------- */
-.notes-box{ width:100%; min-height:420px; border:2px solid #000; border-radius:10px; padding:10px; font-size:14px; color:#000; }
+.notes-box{ width:100%; min-height:420px; border:3px solid #000; border-radius:10px; padding:10px; font-size:14px; color:#000; }
 
 /* ---------- Print layout ---------- */
 @page { size: A4 portrait; margin: 12mm; }
@@ -105,7 +109,7 @@ table{ width:100%; border-collapse:collapse; border-spacing:0; } /* removes the 
 }
 .icon-layer circle{ vector-effect: non-scaling-stroke; }
 
-/* ---------- Map hover tooltip ---------- */
+/* ---------- Hover tooltip ---------- */
 .map-tooltip{
   position: fixed; z-index: 9999; pointer-events: none;
   background: #fff; color:#000;
