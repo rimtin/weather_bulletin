@@ -1,12 +1,12 @@
 :root{
-  --bg:#f6f7f9; --card-bg:#fff; --border:#e6e6e6; --text:#1f2937; --muted:#6b7280; --accent:#2563eb;
+  --bg:#f6f7f9; --card-bg:#fff; --border:#546271; --text:#1f2937; --muted:#6b7280; --accent:#2563eb;
 }
 
 *{ box-sizing:border-box; }
 html,body{ margin:0; padding:0; background:var(--bg); color:var(--text);
   font-family:system-ui,-apple-system,Segoe UI,Roboto,Inter,Ubuntu,Arial,sans-serif; }
 
-.container{ max-width:1024px; margin:24px auto; padding:0 16px; }
+.container{ max-width:1100px; margin:24px auto; padding:0 16px; }
 
 .header{ display:flex; align-items:flex-end; justify-content:space-between; gap:16px; margin-bottom:14px; }
 h1{ margin:0 0 4px; font-size:22px; font-weight:800; }
@@ -14,37 +14,74 @@ h1{ margin:0 0 4px; font-size:22px; font-weight:800; }
 .btn{ background:var(--accent); color:#fff; border:0; padding:10px 14px; border-radius:10px; font-weight:600; cursor:pointer; }
 .btn:hover{ filter:brightness(1.05); }
 
-.card{ background:var(--card-bg); border:1px solid var(--border); border-radius:14px; padding:14px; margin:12px 0 18px; }
+.card{ background:var(--card-bg); border:1px solid #e6e6e6; border-radius:14px; padding:14px; margin:12px 0 18px; }
 .card h3{ margin:4px 0 12px; font-size:16px; font-weight:700; }
 
-/* Data table */
-.table-wrap{ overflow:auto; border-radius:10px; }
-table{ width:100%; border-collapse:collapse; }
-.data-table th, .data-table td{ border:1px solid var(--border); padding:8px 10px; font-size:14px; }
-.data-table thead th{ background:#fafafa; text-align:left; position:sticky; top:0; z-index:1; }
-.data-table select{ width:100%; padding:6px 8px; border-radius:8px; border:1px solid var(--border); background:#fff; }
+/* ---------- Strong, dark table grid (both tables) ---------- */
+.table-wrap{ overflow:auto; border-radius:12px; }
 
-/* === Colored cloud table (like your sample) === */
-.cloud-table{ width:100%; border-collapse:collapse; border:2px solid #c30000; }
-.cloud-table thead th{
-  background:#ff4d4d !important; color:#fff; border:2px solid #c30000; padding:8px 10px;
-  text-align:center; font-weight:800;
+table{ width:100%; border-collapse:separate; border-spacing:0; }
+
+/* FRAME */
+.data-table, .cloud-table{
+  border:2px solid var(--border);
+  border-radius:12px;
+  overflow:hidden;
 }
-.cloud-table td{
-  border-left:2px solid #c30000; border-right:2px solid #c30000;
-  padding:8px 10px; text-align:center; font-weight:700;
+
+/* HEADER */
+.data-table thead th, .cloud-table thead th{
+  background:#cfe8ff;
+  color:#0f172a;
+  border-right:2px solid var(--border);
+  border-bottom:2px solid var(--border);
+  padding:10px 12px;
+  font-weight:800;
+  text-align:center;
 }
-.cloud-table tbody tr:last-child td{ border-bottom:2px solid #c30000; }
+.data-table thead th:first-child,
+.cloud-table thead th:first-child{ border-left:0; }
+.data-table thead th:last-child,
+.cloud-table thead th:last-child{ border-right:0; }
+
+/* BODY cells */
+.data-table td, .cloud-table td{
+  border-right:2px solid var(--border);
+  border-bottom:2px solid var(--border);
+  padding:10px 12px;
+  font-size:14px;
+}
+.data-table tr:last-child td, .cloud-table tr:last-child td{ border-bottom:0; }
+.data-table td:last-child, .cloud-table td:last-child{ border-right:0; }
+
+/* State/Sub-division: prevent weird breaks */
+.data-table td[data-col="state"],
+.data-table td[data-col="subdiv"]{
+  white-space: nowrap;   /* keep full names on one line */
+}
+
+/* Selects: roomy so text never cuts */
+.data-table select{
+  width:100%;
+  min-width:230px;      /* ensures “Overcast Cloud Cover” fits */
+  padding:8px 10px;
+  border:2px solid #9aa6b2;
+  border-radius:10px;
+  background:#fff;
+  font-size:14px;
+}
+
+/* Cloud classification table rows are colored by palette via inline bg */
 .cloud-note{ margin:8px 0 0; font-size:12px; }
 
-/* map cards */
-.map-card{ padding:10px; border-radius:12px; background:#fff; border:1px solid var(--border); margin:12px 0 18px; }
+/* Map cards */
+.map-card{ padding:10px; border-radius:12px; background:#fff; border:1px solid #e6e6e6; margin:12px 0 18px; }
 .map-card h4{ margin:6px 0 10px; font-weight:700; font-size:15px; color:#111; }
 
-/* notes */
+/* Notes */
 .notes-box{ width:100%; min-height:420px; border:2px solid #222; border-radius:10px; padding:10px; font-size:14px; }
 
-/* PRINT LAYOUT */
+/* PRINT layout */
 @page { size: A4 portrait; margin: 12mm; }
 .print-page{ margin-bottom:24px; }
 .page-break-avoid{ break-inside: avoid; page-break-inside: avoid; }
@@ -55,8 +92,9 @@ table{ width:100%; border-collapse:collapse; }
   body { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
   .print-page{ break-after: page; page-break-after: always; }
   .screen-only{ display:none !important; }
-  .cloud-table thead th, .cloud-table td{ -webkit-print-color-adjust:exact; print-color-adjust:exact; }
-  .data-table th, .data-table td{ font-size:11pt; padding:6px 8px; }
+  .data-table th, .data-table td, .cloud-table th, .cloud-table td{
+    -webkit-print-color-adjust: exact; print-color-adjust: exact;
+  }
   #page2 .map-card{ height: 96mm; }
   #page2 svg{ width:100% !important; height: calc(100% - 28px) !important; }
   svg{ shape-rendering: crispEdges; }
@@ -70,7 +108,7 @@ table{ width:100%; border-collapse:collapse; }
 }
 .icon-layer circle{ vector-effect: non-scaling-stroke; }
 
-/* === Map hover tooltip === */
+/* Map hover tooltip */
 .map-tooltip{
   position: fixed;
   z-index: 9999;
@@ -84,7 +122,7 @@ table{ width:100%; border-collapse:collapse; }
   font-size: 13px;
   font-weight: 700;
   line-height: 1.2;
-  transform: translate3d(0,0,0);
+  max-width: 220px;
+  white-space: nowrap;
 }
 @media print { .map-tooltip{ display:none !important; } }
-
