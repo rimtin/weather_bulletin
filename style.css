@@ -20,30 +20,24 @@ html,body{
   align-items: flex-end;
   gap: 16px;
   margin-bottom: 14px;
-  padding-right: 140px;       /* space so button won't overlap centered title */
+  padding-right: 140px; /* reserve space so button doesn’t overlap title */
 }
-.header .title-wrap{
-  flex: 1 1 auto;
-  text-align: center;
-}
-.header .actions{
-  position: absolute;
-  right: 0;
-  bottom: 0;
-}
+.header .title-wrap{ flex:1 1 auto; text-align:center; }
+.header .actions{ position:absolute; right:0; bottom:0; }
+
 h1{
-  margin: 0 0 6px;
-  font-weight: 900;
-  letter-spacing: .2px;
-  text-align: center;
-  font-size: clamp(28px, 3.6vw, 40px);
-  color: #000;
+  margin:0 0 6px;
+  font-weight:900;
+  letter-spacing:.2px;
+  text-align:center;
+  font-size:clamp(28px,3.6vw,40px);
+  color:#000;
 }
 .subhead{
-  text-align: center;
-  margin-top: 2px;
-  font-size: clamp(13px, 1.6vw, 16px);
-  color: #000;
+  text-align:center;
+  margin-top:2px;
+  font-size:clamp(13px,1.6vw,16px);
+  color:#000;
 }
 .btn{ background:var(--accent); color:#fff; border:0; padding:10px 14px; border-radius:10px; font-weight:600; cursor:pointer; }
 .btn:hover{ filter:brightness(1.05); }
@@ -51,7 +45,7 @@ h1{
 .card{ background:var(--card-bg); border:1px solid #e6e6e6; border-radius:14px; padding:14px; margin:12px 0 18px; }
 .card h3{
   margin:4px 0 12px;
-  font-size: clamp(18px, 2.4vw, 22px);
+  font-size:clamp(18px,2.4vw,22px);
   font-weight:800;
   color:#000;
   text-align:center;
@@ -63,20 +57,20 @@ table{ width:100%; border-collapse:separate; border-spacing:0; table-layout:fixe
 
 .data-table, .cloud-table{
   border:0;
-  outline:4px solid #000;        /* heavy outer frame that never breaks */
+  outline:4px solid #000;      /* heavy outer frame that never breaks */
   border-radius:12px;
   overflow:hidden;
 }
 
 .data-table th, .data-table td,
 .cloud-table th, .cloud-table td{
-  border:0;                       /* grid drawn below */
+  border:0;                     /* grid drawn below */
   padding:10px 12px;
   font-size:14px;
   color:#000;
   text-align:center;
   vertical-align:middle;
-  background-clip:padding-box;    /* avoids hairline artifacts */
+  background-clip:padding-box;  /* avoids hairline artifacts */
 }
 
 /* header band */
@@ -86,21 +80,21 @@ table{ width:100%; border-collapse:separate; border-spacing:0; table-layout:fixe
 }
 
 /* inner grid (gap-proof with rowspans) */
-.data-table tr > * ,
-.cloud-table tr > * { border-right:3px solid #000; border-bottom:3px solid #000; }
+.data-table tr>*,
+.cloud-table tr>*{ border-right:3px solid #000; border-bottom:3px solid #000; }
 
 /* keep the right-most vertical line visible */
-.data-table tr > *:last-child,
-.cloud-table tr > *:last-child { border-right:3px solid #000 !important; }
+.data-table tr>*:last-child,
+.cloud-table tr>*:last-child{ border-right:3px solid #000 !important; }
 
-.data-table thead tr > * ,
-.cloud-table thead tr > * { border-top:3px solid #000; }
+.data-table thead tr>*,
+.cloud-table thead tr>*{ border-top:3px solid #000; }
 
-.data-table tbody tr:first-child > * ,
-.cloud-table tbody tr:first-child > * { border-top:0; } /* header draws it */
+.data-table tbody tr:first-child>*,
+.cloud-table tbody tr:first-child>*{ border-top:0; } /* header draws it */
 
-.data-table tr > *:first-child,
-.cloud-table tr > *:first-child { border-left:3px solid #000; }
+.data-table tr>*:first-child,
+.cloud-table tr>*:first-child{ border-left:3px solid #000; }
 
 /* keep long labels intact */
 .data-table td[data-col="state"],
@@ -129,7 +123,7 @@ table{ width:100%; border-collapse:separate; border-spacing:0; table-layout:fixe
 .notes-box{
   width:100%;
   min-height:220px;
-  resize: both;           /* ↔ and ↕ */
+  resize:both;           /* ↔ and ↕ */
   overflow:auto;
   border:3px solid #000;
   border-radius:10px;
@@ -137,88 +131,99 @@ table{ width:100%; border-collapse:separate; border-spacing:0; table-layout:fixe
   font-size:14px;
   color:#000;
   max-width:none;
-  -webkit-overflow-scrolling: touch;
+  -webkit-overflow-scrolling:touch;
 }
 
-/* ---------- Print layout ---------- */
-@page { size: A4 portrait; margin: 12mm; }
-.print-page{ margin-bottom:24px; }
-.page-break-avoid{ break-inside: avoid; page-break-inside: avoid; }
-.screen-only{ display:block; }
-.print-only{ display:none; }
-
-@media print{
-  body { -webkit-print-color-adjust: exact; print-color-adjust: exact; color:#000; }
-  .container{ max-width:none; margin:0; padding:0; }
-
-  /* place notes under the table for PDF; hide original notes page */
-  #notes-print-card.print-only{ display:block !important; break-inside: avoid; }
-  #page3{ display:none !important; }
-
-  /* bigger maps that fit the page nicely in PDF */
-  #page2 .map-card{
-    border:0;
-    padding: 6mm 8mm;
-    height: 125mm;                 /* adjust to taste: 125–135mm */
-    break-inside: avoid;
-  }
-  #page2 svg{
-    width:100% !important;
-    height: calc(100% - 24px) !important;
-  }
-
-  .print-page{ break-after: page; page-break-after: always; }
-  .screen-only{ display:none !important; }
-  .data-table th, .data-table td, .cloud-table th, .cloud-table td{
-    -webkit-print-color-adjust: exact; print-color-adjust: exact; color:#000;
-  }
-  svg{ shape-rendering: crispEdges; }
+/* ---------- Hover tooltip ---------- */
+.map-tooltip{
+  position:fixed; z-index:9999; pointer-events:none;
+  background:#fff; color:#000;
+  border-radius:12px; padding:8px 10px;
+  box-shadow:0 10px 20px rgba(0,0,0,.18), 0 2px 6px rgba(0,0,0,.12);
+  border:1px solid rgba(0,0,0,.18);
+  font-size:13px; font-weight:700; line-height:1.2;
+  max-width:220px; white-space:nowrap;
 }
 
 /* ---------- Map legend + icons ---------- */
 .map-legend text{ font-size:12px; fill:#000; }
 .icon-layer text{
-  paint-order: stroke; stroke:#fff; stroke-width:2px;
+  paint-order:stroke; stroke:#fff; stroke-width:2px;
   font-family:"Segoe UI Emoji","Apple Color Emoji","Noto Color Emoji",sans-serif;
   fill:#000;
 }
-.icon-layer circle{ vector-effect: non-scaling-stroke; }
-
-/* ---------- Hover tooltip ---------- */
-.map-tooltip{
-  position: fixed; z-index: 9999; pointer-events: none;
-  background: #fff; color:#000;
-  border-radius: 12px; padding: 8px 10px;
-  box-shadow: 0 10px 20px rgba(0,0,0,.18), 0 2px 6px rgba(0,0,0,.12);
-  border: 1px solid rgba(0,0,0,.18);
-  font-size: 13px; font-weight: 700; line-height: 1.2;
-  max-width: 220px; white-space: nowrap;
-}
-@media print { .map-tooltip{ display:none !important; } }
+.icon-layer circle{ vector-effect:non-scaling-stroke; }
 
 /* ---------- Responsive (mobile-friendly) ---------- */
-@media (max-width: 900px){
+@media (max-width:900px){
   .container{ padding:0 12px; }
-  .map-card svg{ height: 58vw; min-height: 300px; }
+  .map-card svg{ height:58vw; min-height:300px; }
   .table-wrap{ overflow-x:auto; }
-  table{ min-width: 820px; }          /* keep structure; user can scroll */
-  .data-table select{ min-width: 200px; font-size:13px; }
+  table{ min-width:820px; }              /* keep structure; user can scroll */
+  .data-table select{ min-width:200px; font-size:13px; }
 }
-@media (max-width: 640px){
-  .header{
-    padding-right:0;
-    align-items:center;
-  }
+@media (max-width:640px){
+  .header{ padding-right:0; align-items:center; }
   .header .actions{
-    position: static;
-    width: 100%;
-    display: flex;
-    justify-content: center;
-    margin-top: 8px;
+    position:static; width:100%;
+    display:flex; justify-content:center; margin-top:8px;
   }
-  .btn{ width: max(180px, 50%); }
-  .map-card svg{ height: 64vw; min-height: 260px; }
-  table{ min-width: 740px; }
-  .data-table select{ min-width: 180px; font-size:13px; }
-  .notes-box{ min-height: 180px; }
+  .btn{ width:max(180px,50%); }
+  .map-card svg{ height:64vw; min-height:260px; }
+  table{ min-width:740px; }
+  .data-table select{ min-width:180px; font-size:13px; }
+  .notes-box{ min-height:180px; }
 }
+
+/* ---------- Print layout (PDF) ---------- */
+@page{ size:A4 portrait; margin:12mm; }
+.print-page{ margin-bottom:24px; }
+.page-break-avoid{ break-inside:avoid; page-break-inside:avoid; }
+.screen-only{ display:block; }
+.print-only{ display:none; }
+
+@media print{
+  body{ -webkit-print-color-adjust:exact; print-color-adjust:exact; color:#000; }
+  .container{ max-width:none; margin:0; padding:0; }
+
+  /* Put Notes under the table in PDF; hide the screen notes page */
+  #notes-print-card.print-only{ display:block !important; break-inside:avoid; }
+  #page3{ display:none !important; }
+
+  /* Bigger maps that fill the page nicely */
+  #page2 .map-card{
+    border:0; padding:6mm 8mm; height:125mm; break-inside:avoid;
+  }
+  #page2 svg{ width:100% !important; height:calc(100% - 24px) !important; }
+
+  /* ✅ Tables: fit-to-page and keep borders visible */
+  .table-wrap{ overflow:visible !important; }   /* no clipped scroll area */
+  table{
+    width:100% !important;
+    min-width:0 !important;
+    table-layout:auto !important;               /* let columns flex */
+  }
+  /* override any inline widths on TH from HTML */
+  .data-table thead th, .cloud-table thead th{ width:auto !important; }
+
+  /* Compact a little so everything fits comfortably */
+  .data-table th, .data-table td, .cloud-table th, .cloud-table td{
+    padding:8px 10px;
+    font-size:12.5px;
+  }
+  .data-table select{
+    min-width:0 !important; width:100% !important; font-size:12.5px !important;
+  }
+
+  /* Keep borders and avoid row-splitting across pages */
+  .data-table tr, .cloud-table tr{ break-inside:avoid; page-break-inside:avoid; }
+  .data-table tr>*:last-child, .cloud-table tr>*:last-child{
+    border-right:3px solid #000 !important; /* right frame line */
+  }
+
+  .print-page{ break-after:page; page-break-after:always; }
+  .screen-only{ display:none !important; }
+  svg{ shape-rendering:crispEdges; }
+}
+
+@media print { .map-tooltip{ display:none !important; } }
